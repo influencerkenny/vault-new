@@ -1,0 +1,35 @@
+<?php
+// admin/sidebar.php
+?>
+<style>
+@media (max-width: 991px) {
+  .sidebar {
+    left: -260px !important;
+    transition: left 0.3s;
+    min-width: 220px !important;
+    max-width: 220px !important;
+    box-shadow: 2px 0 16px #0004;
+  }
+  .sidebar.open {
+    left: 0 !important;
+    z-index: 2000 !important;
+  }
+}
+</style>
+<div class="sidebar" id="sidebar" aria-label="Admin sidebar navigation" style="background: rgba(10,16,30,0.95); border-right: 1px solid #1e293b; min-height: 100vh; width: 260px; position: fixed; top: 0; left: 0; z-index: 100; padding: 2rem 1.5rem 1.5rem 1.5rem; display: flex; flex-direction: column; transition: left 0.3s;">
+  <div class="logo mb-4" style="margin-bottom: 2rem; text-align: center;">
+    <img src="/public/vault-logo.png" alt="Vault Logo" style="height:40px;">
+    <div style="font-weight:700;font-size:1.3rem;color:#38bdf8;">Vault Admin</div>
+  </div>
+  <a href="dashboard.php" class="nav-link<?=basename($_SERVER['PHP_SELF'])==='dashboard.php'?' active':''?>" style="color: #cbd5e1; font-weight: 500; border-radius: 0.75rem; padding: 0.75rem 1rem; margin-bottom: 0.25rem; display: flex; align-items: center; gap: 0.75rem; transition: background 0.2s, color 0.2s; position: relative;<?=basename($_SERVER['PHP_SELF'])==='dashboard.php'?' background: linear-gradient(90deg, #2563eb22 0%, #0ea5e922 100%); color: #38bdf8; box-shadow: 0 2px 8px 0 rgba(59,130,246,0.08);':''?>"><i class="bi bi-house"></i> Dashboard</a>
+  <a href="users.php" class="nav-link<?=basename($_SERVER['PHP_SELF'])==='users.php'?' active':''?>" style="color: #cbd5e1; font-weight: 500; border-radius: 0.75rem; padding: 0.75rem 1rem; margin-bottom: 0.25rem; display: flex; align-items: center; gap: 0.75rem; transition: background 0.2s, color 0.2s; position: relative;<?=basename($_SERVER['PHP_SELF'])==='users.php'?' background: linear-gradient(90deg, #2563eb22 0%, #0ea5e922 100%); color: #38bdf8; box-shadow: 0 2px 8px 0 rgba(59,130,246,0.08);':''?>"><i class="bi bi-people"></i> Users</a>
+  <a href="plans.php" class="nav-link<?=basename($_SERVER['PHP_SELF'])==='plans.php'?' active':''?>" style="color: #cbd5e1; font-weight: 500; border-radius: 0.75rem; padding: 0.75rem 1rem; margin-bottom: 0.25rem; display: flex; align-items: center; gap: 0.75rem; transition: background 0.2s, color 0.2s; position: relative;<?=basename($_SERVER['PHP_SELF'])==='plans.php'?' background: linear-gradient(90deg, #2563eb22 0%, #0ea5e922 100%); color: #38bdf8; box-shadow: 0 2px 8px 0 rgba(59,130,246,0.08);':''?>"><i class="bi bi-layers"></i> Plans</a>
+  <a href="deposits.php" class="nav-link<?=basename($_SERVER['PHP_SELF'])==='deposits.php'?' active':''?>" style="color: #cbd5e1; font-weight: 500; border-radius: 0.75rem; padding: 0.75rem 1rem; margin-bottom: 0.25rem; display: flex; align-items: center; gap: 0.75rem; transition: background 0.2s, color 0.2s; position: relative;<?=basename($_SERVER['PHP_SELF'])==='deposits.php'?' background: linear-gradient(90deg, #2563eb22 0%, #0ea5e922 100%); color: #38bdf8; box-shadow: 0 2px 8px 0 rgba(59,130,246,0.08);':''?>"><i class="bi bi-download"></i> Deposits</a>
+  <a href="withdrawals.php" class="nav-link<?=basename($_SERVER['PHP_SELF'])==='withdrawals.php'?' active':''?>" style="color: #cbd5e1; font-weight: 500; border-radius: 0.75rem; padding: 0.75rem 1rem; margin-bottom: 0.25rem; display: flex; align-items: center; gap: 0.75rem; transition: background 0.2s, color 0.2s; position: relative;<?=basename($_SERVER['PHP_SELF'])==='withdrawals.php'?' background: linear-gradient(90deg, #2563eb22 0%, #0ea5e922 100%); color: #38bdf8; box-shadow: 0 2px 8px 0 rgba(59,130,246,0.08);':''?>"><i class="bi bi-upload"></i> Withdrawals</a>
+  <a href="transactions.php" class="nav-link<?=basename($_SERVER['PHP_SELF'])==='transactions.php'?' active':''?>" style="color: #cbd5e1; font-weight: 500; border-radius: 0.75rem; padding: 0.75rem 1rem; margin-bottom: 0.25rem; display: flex; align-items: center; gap: 0.75rem; transition: background 0.2s, color 0.2s; position: relative;<?=basename($_SERVER['PHP_SELF'])==='transactions.php'?' background: linear-gradient(90deg, #2563eb22 0%, #0ea5e922 100%); color: #38bdf8; box-shadow: 0 2px 8px 0 rgba(59,130,246,0.08);':''?>"><i class="bi bi-list"></i> Transactions</a>
+  <a href="referrals.php" class="nav-link<?=basename($_SERVER['PHP_SELF'])==='referrals.php'?' active':''?>" style="color: #cbd5e1; font-weight: 500; border-radius: 0.75rem; padding: 0.75rem 1rem; margin-bottom: 0.25rem; display: flex; align-items: center; gap: 0.75rem; transition: background 0.2s, color 0.2s; position: relative;<?=basename($_SERVER['PHP_SELF'])==='referrals.php'?' background: linear-gradient(90deg, #2563eb22 0%, #0ea5e922 100%); color: #38bdf8; box-shadow: 0 2px 8px 0 rgba(59,130,246,0.08);':''?>"><i class="bi bi-people"></i> Referrals</a>
+  <a href="payment-gateway.php" class="nav-link<?=basename($_SERVER['PHP_SELF'])==='payment-gateway.php'?' active':''?>" style="color: #cbd5e1; font-weight: 500; border-radius: 0.75rem; padding: 0.75rem 1rem; margin-bottom: 0.25rem; display: flex; align-items: center; gap: 0.75rem; transition: background 0.2s, color 0.2s; position: relative;<?=basename($_SERVER['PHP_SELF'])==='payment-gateway.php'?' background: linear-gradient(90deg, #2563eb22 0%, #0ea5e922 100%); color: #38bdf8; box-shadow: 0 2px 8px 0 rgba(59,130,246,0.08);':''?>"><i class="bi bi-credit-card"></i> Payment Gateway</a>
+  <a href="settings.php" class="nav-link<?=basename($_SERVER['PHP_SELF'])==='settings.php'?' active':''?>" style="color: #cbd5e1; font-weight: 500; border-radius: 0.75rem; padding: 0.75rem 1rem; margin-bottom: 0.25rem; display: flex; align-items: center; gap: 0.75rem; transition: background 0.2s, color 0.2s; position: relative;<?=basename($_SERVER['PHP_SELF'])==='settings.php'?' background: linear-gradient(90deg, #2563eb22 0%, #0ea5e922 100%); color: #38bdf8; box-shadow: 0 2px 8px 0 rgba(59,130,246,0.08);':''?>"><i class="bi bi-gear"></i> Settings</a>
+  <a href="support.php" class="nav-link<?=basename($_SERVER['PHP_SELF'])==='support.php'?' active':''?>" style="color: #cbd5e1; font-weight: 500; border-radius: 0.75rem; padding: 0.75rem 1rem; margin-bottom: 0.25rem; display: flex; align-items: center; gap: 0.75rem; transition: background 0.2s, color 0.2s; position: relative;<?=basename($_SERVER['PHP_SELF'])==='support.php'?' background: linear-gradient(90deg, #2563eb22 0%, #0ea5e922 100%); color: #38bdf8; box-shadow: 0 2px 8px 0 rgba(59,130,246,0.08);':''?>"><i class="bi bi-question-circle"></i> Support & Tickets</a>
+  <form method="get" action="dashboard.php"><button type="submit" name="logout" class="logout-btn" style="color: #f87171; font-weight: 500; border-radius: 0.75rem; padding: 0.75rem 1rem; margin-top: auto; background: none; border: none; display: flex; align-items: center; gap: 0.75rem; transition: background 0.2s, color 0.2s;"><i class="bi bi-box-arrow-right"></i> Logout</button></form>
+</div> 

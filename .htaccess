@@ -1,0 +1,6 @@
+RewriteEngine On
+RewriteBase /
+
+# Route all /api/* requests (including OPTIONS) to api/index.php
+RewriteCond %{REQUEST_URI} ^/api/
+RewriteRule ^api/.*$ api/index.php [QSA,L]

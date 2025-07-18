@@ -1,0 +1,32 @@
+Array
+(
+    [user_id] => 1
+    [first_name] => Parres
+    [last_name] => Mia
+    [email] => awanews5@gmail.com
+    [avatar_url] => 
+    [avatar_file] => Array
+        (
+            [name] => btc.png
+            [type] => image/png
+            [tmp_name] => C:\xampp\tmp\php4BC1.tmp
+            [error] => 0
+            [size] => 2227
+        )
+
+    [session] => Array
+        (
+            [user_id] => 1
+        )
+
+)
+dest=C:\xampp\htdocs\vault-new/public/avatars/avatar_6879fa4592caf.png, dirExists=yes, dirWritable=yes
+move_uploaded_file: tmp=C:\xampp\tmp\php4BC1.tmp, dest=C:\xampp\htdocs\vault-new/public/avatars/avatar_6879fa4592caf.png, result=success
+About to update: Array
+(
+    [0] => Parres
+    [1] => Mia
+    [2] => awanews5@gmail.com
+    [3] => public/avatars/avatar_6879fa4592caf.png
+    [4] => 1
+)
