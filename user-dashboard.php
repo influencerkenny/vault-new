@@ -116,7 +116,7 @@ if (isset($_GET['logout'])) {
       width: 260px;
       position: fixed;
       top: 0; left: 0;
-      z-index: 100;
+      z-index: 2001;
       padding: 2rem 1.5rem 1.5rem 1.5rem;
       display: flex;
       flex-direction: column;
@@ -275,13 +275,16 @@ if (isset($_GET['logout'])) {
     }
     .sidebar-mobile-overlay {
       position: fixed;
-      top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(0,0,0,0.5);
+      inset: 0;
+      background: rgba(0,0,0,0.45);
       z-index: 2000;
-      display: none;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
     }
     .sidebar-mobile-overlay.active {
-      display: block;
+      opacity: 1;
+      pointer-events: auto;
     }
     .profile-dropdown-menu {
       border-radius: 1rem;
@@ -367,14 +370,13 @@ if (isset($_GET['logout'])) {
   </style>
 </head>
 <body>
-  <!-- Mobile Sidebar Overlay -->
-  <div id="sidebarOverlay" class="sidebar-mobile-overlay"></div>
   <!-- Sidebar -->
-  <div id="sidebar" class="sidebar d-none d-lg-flex flex-column">
+  <div id="sidebar" class="sidebar">
     <div class="logo mb-4">
       <img src="public/vault-logo-new.png" alt="Vault Logo" height="48">
     </div>
-    <?php foreach ($sidebarLinks as $link): ?>
+    <?php foreach (
+      $sidebarLinks as $link): ?>
       <a href="<?=$link['href']?>" class="nav-link<?=basename($_SERVER['PHP_SELF']) === basename($link['href']) ? ' active' : ''?>">
         <i class="bi <?=$link['icon']?>"></i> <?=$link['label']?>
       </a>
@@ -383,6 +385,8 @@ if (isset($_GET['logout'])) {
       <button type="submit" name="logout" class="logout-btn"><i class="bi bi-box-arrow-right"></i> Logout</button>
     </form>
   </div>
+  <!-- Mobile Sidebar Overlay (after sidebar) -->
+  <div id="sidebarOverlay" class="sidebar-mobile-overlay"></div>
   <div class="main-content">
     <header class="dashboard-header d-flex align-items-center justify-content-between">
       <div class="d-flex align-items-center">
@@ -640,14 +644,12 @@ if (isset($_GET['logout'])) {
     const sidebarOverlay = document.getElementById('sidebarOverlay');
     const sidebarToggle = document.getElementById('sidebarToggle');
     function openSidebar() {
-      sidebar.classList.add('active','d-flex');
-      sidebar.classList.remove('d-none');
+      sidebar.classList.add('active');
       sidebarOverlay.classList.add('active');
     }
     function closeSidebar() {
-      sidebar.classList.remove('active','d-flex');
+      sidebar.classList.remove('active');
       sidebarOverlay.classList.remove('active');
-      if (window.innerWidth < 992) sidebar.classList.add('d-none');
     }
     if (sidebarToggle) {
       sidebarToggle.addEventListener('click', openSidebar);

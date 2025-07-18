@@ -67,7 +67,19 @@ $plan_history = $stmt->fetchAll(PDO::FETCH_ASSOC);
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
   <style>
     body { font-family: 'Inter', sans-serif; background: #0f172a; color: #e5e7eb; }
-    .sidebar { background: rgba(10,16,30,0.95); border-right: 1px solid #1e293b; min-height: 100vh; width: 260px; position: fixed; top: 0; left: 0; z-index: 100; padding: 2rem 1.5rem 1.5rem 1.5rem; display: flex; flex-direction: column; transition: left 0.3s; }
+    .sidebar {
+      background: rgba(10,16,30,0.95);
+      border-right: 1px solid #1e293b;
+      min-height: 100vh;
+      width: 260px;
+      position: fixed;
+      top: 0; left: 0;
+      z-index: 2001;
+      padding: 2rem 1.5rem 1.5rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      transition: left 0.3s;
+    }
     .sidebar .logo { margin-bottom: 2rem; text-align: center; }
     .sidebar .nav-link { color: #cbd5e1; font-weight: 500; border-radius: 0.75rem; padding: 0.75rem 1rem; margin-bottom: 0.25rem; display: flex; align-items: center; gap: 0.75rem; transition: background 0.2s, color 0.2s; position: relative; }
     .sidebar .nav-link.active, .sidebar .nav-link:hover { background: linear-gradient(90deg, #2563eb22 0%, #0ea5e922 100%); color: #38bdf8; box-shadow: 0 2px 8px 0 rgba(59,130,246,0.08); }
@@ -90,7 +102,9 @@ $plan_history = $stmt->fetchAll(PDO::FETCH_ASSOC);
     .modal-footer { border-top: 1px solid #2563eb33; }
     .dashboard-content-wrapper { max-width: 900px; width: 100%; margin: 0 auto; padding: 0 1rem; }
     @media (max-width: 991px) {
-      .main-content { margin-left: 0 !important; }
+      .sidebar { left: -260px; }
+      .sidebar.active { left: 0; }
+      .main-content { margin-left: 0; }
       .dashboard-content-wrapper { max-width: 100vw; margin: 0; padding: 0 0.3rem; }
     }
     @media (max-width: 767px) {
@@ -167,13 +181,58 @@ $plan_history = $stmt->fetchAll(PDO::FETCH_ASSOC);
       .plan-card-title, .history-card-title { font-size: 0.95rem; }
       .plan-card-row, .history-card-row { font-size: 0.93rem; }
     }
+    .sidebar-mobile-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 2000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .sidebar-mobile-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    /* Dotted leader for plan attributes */
+    .plan-attr-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 1.01rem;
+      margin-bottom: 0.3rem;
+      color: #e5e7eb;
+    }
+    .plan-attr-label {
+      flex: 1 1 auto;
+      position: relative;
+      padding-right: 0.5em;
+      white-space: nowrap;
+    }
+    .plan-attr-label:after {
+      content: "";
+      display: inline-block;
+      border-bottom: 1px dotted #64748b;
+      width: 100%;
+      position: absolute;
+      left: 100%;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 0;
+    }
+    .plan-attr-value {
+      flex: 0 0 auto;
+      font-weight: 600;
+      color: #38bdf8;
+      margin-left: 0.5em;
+      white-space: nowrap;
+      z-index: 1;
+    }
   </style>
 </head>
 <body>
-  <!-- Mobile Sidebar Overlay -->
-  <div id="sidebarOverlay" class="sidebar-mobile-overlay"></div>
   <!-- Sidebar -->
-  <div id="sidebar" class="sidebar d-none d-lg-flex flex-column">
+  <div id="sidebar" class="sidebar">
     <div class="logo mb-4">
       <img src="public/vault-logo-new.png" alt="Vault Logo" height="48">
     </div>
@@ -186,6 +245,8 @@ $plan_history = $stmt->fetchAll(PDO::FETCH_ASSOC);
       <button type="submit" name="logout" class="logout-btn"><i class="bi bi-box-arrow-right"></i> Logout</button>
     </form>
   </div>
+  <!-- Mobile Sidebar Overlay (after sidebar) -->
+  <div id="sidebarOverlay" class="sidebar-mobile-overlay"></div>
   <div class="main-content">
     <header class="dashboard-header d-flex align-items-center justify-content-between">
       <div class="d-flex align-items-center">
@@ -230,19 +291,21 @@ $plan_history = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <!-- Desktop Plans Grid -->
         <div class="plans-grid mb-5 d-none d-md-grid">
           <?php foreach ($plans as $plan): ?>
-            <div class="plan-card d-flex flex-column mb-3">
-              <div>
-                <div class="plan-title mb-2"><?=htmlspecialchars($plan['name'])?></div>
-                <div class="plan-desc mb-2"><?=htmlspecialchars($plan['description'])?></div>
-                <div class="plan-meta mb-1"><b>Daily ROI:</b> <?=number_format($plan['daily_roi'],2)?>%</div>
-                <div class="plan-meta mb-1"><b>Monthly ROI:</b> <?=number_format($plan['monthly_roi'],2)?>%</div>
-                <div class="plan-meta mb-1"><b>Lock-in:</b> <?=$plan['lock_in_duration']?> days</div>
-                <div class="plan-meta mb-1"><b>Min:</b> $<?=number_format($plan['min_investment'],2)?> <b>Max:</b> $<?=number_format($plan['max_investment'],2)?></div>
-                <?php if ($plan['bonus'] > 0): ?><div class="plan-meta mb-1"><b>Bonus:</b> $<?=number_format($plan['bonus'],2)?></div><?php endif; ?>
-                <?php if ($plan['referral_reward'] > 0): ?><div class="plan-meta mb-1"><b>Referral Reward:</b> $<?=number_format($plan['referral_reward'],2)?></div><?php endif; ?>
+            <div class="plan-card d-flex flex-column mb-3" style="box-shadow: 0 6px 32px 0 rgba(37,99,235,0.10), 0 1.5px 8px 0 rgba(31,41,55,0.10); border-radius: 1.25rem; background: linear-gradient(135deg, #232b3b 80%, #202736 100%); border: 1.5px solid #2563eb33;">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <div class="plan-title mb-0" style="font-size:1.18rem; color:#38bdf8; font-weight:700; letter-spacing:0.01em;"> <?=htmlspecialchars($plan['name'])?> </div>
+                <?php if ($plan['bonus'] > 0): ?><span class="badge bg-success ms-2">Bonus</span><?php endif; ?>
               </div>
+              <div class="plan-desc mb-2" style="color:#a1a1aa; font-size:1.01rem;"> <?=htmlspecialchars($plan['description'])?> </div>
+              <div class="plan-attr-row"><span class="plan-attr-label">Minimum Stake:</span><span class="plan-attr-value">$<?=number_format($plan['min_investment'],2)?></span></div>
+              <div class="plan-attr-row"><span class="plan-attr-label">Maximum Stake:</span><span class="plan-attr-value">$<?=number_format($plan['max_investment'],2)?></span></div>
+              <div class="plan-attr-row"><span class="plan-attr-label">Daily ROI:</span><span class="plan-attr-value"><?=number_format($plan['daily_roi'],2)?>%</span></div>
+              <div class="plan-attr-row"><span class="plan-attr-label">Monthly ROI:</span><span class="plan-attr-value"><?=number_format($plan['monthly_roi'],2)?>%</span></div>
+              <div class="plan-attr-row"><span class="plan-attr-label">Lock-in:</span><span class="plan-attr-value"><?=$plan['lock_in_duration']?> days</span></div>
+              <?php if ($plan['bonus'] > 0): ?><div class="plan-attr-row"><span class="plan-attr-label">Bonus:</span><span class="plan-attr-value">$<?=number_format($plan['bonus'],2)?></span></div><?php endif; ?>
+              <?php if ($plan['referral_reward'] > 0): ?><div class="plan-attr-row"><span class="plan-attr-label">Referral Reward:</span><span class="plan-attr-value">$<?=number_format($plan['referral_reward'],2)?></span></div><?php endif; ?>
               <div class="plan-footer mt-3">
-                <button class="btn btn-info w-100" data-bs-toggle="modal" data-bs-target="#stakeModal" data-plan-id="<?=$plan['id']?>" data-plan-name="<?=htmlspecialchars($plan['name'])?>" data-min="<?=$plan['min_investment']?>" data-max="<?=$plan['max_investment']?>" data-daily-roi="<?=$plan['daily_roi']?>" data-lockin="<?=$plan['lock_in_duration']?>">Stake Now</button>
+                <button class="btn btn-info w-100 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#stakeModal" data-plan-id="<?=$plan['id']?>" data-plan-name="<?=htmlspecialchars($plan['name'])?>" data-min="<?=$plan['min_investment']?>" data-max="<?=$plan['max_investment']?>" data-daily-roi="<?=$plan['daily_roi']?>" data-lockin="<?=$plan['lock_in_duration']?>">Stake Now</button>
               </div>
             </div>
           <?php endforeach; ?>
@@ -250,19 +313,21 @@ $plan_history = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <!-- Mobile Plans List -->
         <div class="plans-mobile-list d-md-none mb-5">
           <?php foreach ($plans as $plan): ?>
-            <div class="plan-card-mobile mb-3">
-              <div class="plan-card-header">
-                <span class="plan-card-title"><?= htmlspecialchars($plan['name']) ?></span>
+            <div class="plan-card-mobile mb-3" style="box-shadow: 0 6px 32px 0 rgba(37,99,235,0.10), 0 1.5px 8px 0 rgba(31,41,55,0.10); border-radius: 1.25rem; background: linear-gradient(135deg, #232b3b 80%, #202736 100%); border: 1.5px solid #2563eb33;">
+              <div class="d-flex align-items-center justify-content-between mb-1">
+                <span class="plan-card-title" style="font-size:1.08rem; color:#38bdf8; font-weight:700;"> <?= htmlspecialchars($plan['name']) ?> </span>
+                <?php if ($plan['bonus'] > 0): ?><span class="badge bg-success ms-2">Bonus</span><?php endif; ?>
               </div>
-              <div class="plan-card-desc mb-1"><?= htmlspecialchars($plan['description']) ?></div>
-              <div class="plan-card-row"><b>Daily ROI:</b> <?= number_format($plan['daily_roi'], 2) ?>%</div>
-              <div class="plan-card-row"><b>Monthly ROI:</b> <?= number_format($plan['monthly_roi'], 2) ?>%</div>
-              <div class="plan-card-row"><b>Lock-in:</b> <?= $plan['lock_in_duration'] ?> days</div>
-              <div class="plan-card-row"><b>Min:</b> $<?= number_format($plan['min_investment'], 2) ?> <b>Max:</b> $<?= number_format($plan['max_investment'], 2) ?></div>
-              <?php if ($plan['bonus'] > 0): ?><div class="plan-card-row"><b>Bonus:</b> $<?= number_format($plan['bonus'], 2) ?></div><?php endif; ?>
-              <?php if ($plan['referral_reward'] > 0): ?><div class="plan-card-row"><b>Referral Reward:</b> $<?= number_format($plan['referral_reward'], 2) ?></div><?php endif; ?>
+              <div class="plan-card-desc mb-1" style="color:#a1a1aa; font-size:0.97rem;"> <?= htmlspecialchars($plan['description']) ?> </div>
+              <div class="plan-attr-row"><span class="plan-attr-label">Minimum Stake:</span><span class="plan-attr-value">$<?=number_format($plan['min_investment'],2)?></span></div>
+              <div class="plan-attr-row"><span class="plan-attr-label">Maximum Stake:</span><span class="plan-attr-value">$<?=number_format($plan['max_investment'],2)?></span></div>
+              <div class="plan-attr-row"><span class="plan-attr-label">Daily ROI:</span><span class="plan-attr-value"><?=number_format($plan['daily_roi'],2)?>%</span></div>
+              <div class="plan-attr-row"><span class="plan-attr-label">Monthly ROI:</span><span class="plan-attr-value"><?=number_format($plan['monthly_roi'],2)?>%</span></div>
+              <div class="plan-attr-row"><span class="plan-attr-label">Lock-in:</span><span class="plan-attr-value"><?=$plan['lock_in_duration']?> days</span></div>
+              <?php if ($plan['bonus'] > 0): ?><div class="plan-attr-row"><span class="plan-attr-label">Bonus:</span><span class="plan-attr-value">$<?=number_format($plan['bonus'],2)?></span></div><?php endif; ?>
+              <?php if ($plan['referral_reward'] > 0): ?><div class="plan-attr-row"><span class="plan-attr-label">Referral Reward:</span><span class="plan-attr-value">$<?=number_format($plan['referral_reward'],2)?></span></div><?php endif; ?>
               <div class="plan-card-actions mt-2">
-                <button class="btn btn-info w-100" data-bs-toggle="modal" data-bs-target="#stakeModal" data-plan-id="<?=$plan['id']?>" data-plan-name="<?=htmlspecialchars($plan['name'])?>" data-min="<?=$plan['min_investment']?>" data-max="<?=$plan['max_investment']?>" data-daily-roi="<?=$plan['daily_roi']?>" data-lockin="<?=$plan['lock_in_duration']?>">Stake Now</button>
+                <button class="btn btn-info w-100 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#stakeModal" data-plan-id="<?=$plan['id']?>" data-plan-name="<?=htmlspecialchars($plan['name'])?>" data-min="<?=$plan['min_investment']?>" data-max="<?=$plan['max_investment']?>" data-daily-roi="<?=$plan['daily_roi']?>" data-lockin="<?=$plan['lock_in_duration']?>">Stake Now</button>
               </div>
             </div>
           <?php endforeach; ?>
@@ -353,18 +418,16 @@ $plan_history = $stmt->fetchAll(PDO::FETCH_ASSOC);
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     // Mobile sidebar toggle/overlay (copied from dashboard)
-    const sidebar = document.getElementById('sidebar');
-    const sidebarOverlay = document.getElementById('sidebarOverlay');
-    const sidebarToggle = document.getElementById('sidebarToggle');
+    var sidebar = document.getElementById('sidebar');
+    var sidebarOverlay = document.getElementById('sidebarOverlay');
+    var sidebarToggle = document.getElementById('sidebarToggle');
     function openSidebar() {
-      sidebar.classList.add('active','d-flex');
-      sidebar.classList.remove('d-none');
+      sidebar.classList.add('active');
       sidebarOverlay.classList.add('active');
     }
     function closeSidebar() {
-      sidebar.classList.remove('active','d-flex');
+      sidebar.classList.remove('active');
       sidebarOverlay.classList.remove('active');
-      if (window.innerWidth < 992) sidebar.classList.add('d-none');
     }
     if (sidebarToggle) {
       sidebarToggle.addEventListener('click', openSidebar);
@@ -448,5 +511,6 @@ $plan_history = $stmt->fetchAll(PDO::FETCH_ASSOC);
       });
     });
   </script>
+  <script src="public/sidebar-toggle.js"></script>
 </body>
 </html> 
