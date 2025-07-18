@@ -34,8 +34,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['stake_plan_id'])) {
 $stmt = $pdo->prepare('SELECT first_name, last_name, email FROM users WHERE id = ?');
 $stmt->execute([$user_id]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
-$displayName = $user ? trim($user['first_name'] . ' ' . $user['last_name']) : 'Investor';
-if (!$displayName) $displayName = $user['email'] ?? 'Investor';
+if ($user) {
+    $displayName = trim($user['first_name'] . ' ' . $user['last_name']);
+    $email = $user['email'];
+} else {
+    $displayName = 'Investor';
+    $email = '';
+}
 $avatar = 'public/placeholder-user.jpg';
 $sidebarLinks = [
   ['href' => 'user-dashboard.php', 'label' => 'Dashboard', 'icon' => 'bi-house'],
@@ -50,11 +55,22 @@ $sidebarLinks = [
 ];
 // Fetch user available balance
 // Fetch all active plans
-$plans = $pdo->query('SELECT * FROM plans WHERE status="active" ORDER BY created_at DESC')->fetchAll(PDO::FETCH_ASSOC);
-// Fetch user plan history
-$stmt = $pdo->prepare('SELECT i.*, p.name AS plan_name FROM investments i JOIN plans p ON i.plan_id = p.id WHERE i.user_id = ? ORDER BY i.start_date DESC');
-$stmt->execute([$user_id]);
+$plans = $pdo->query('SELECT id, name, description, min_investment, max_investment, daily_roi, monthly_roi, lock_in_duration FROM plans WHERE status="active" ORDER BY created_at DESC')->fetchAll(PDO::FETCH_ASSOC);
+// Fetch user plan history with pagination
+$limit = 10;
+$page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$offset = ($page - 1) * $limit;
+$stmt = $pdo->prepare('SELECT i.id, i.plan_id, i.amount, i.status, i.start_date, i.end_date, i.total_earned, p.name AS plan_name FROM investments i JOIN plans p ON i.plan_id = p.id WHERE i.user_id = ? ORDER BY i.start_date DESC LIMIT ? OFFSET ?');
+$stmt->bindValue(1, $user_id, PDO::PARAM_INT);
+$stmt->bindValue(2, $limit, PDO::PARAM_INT);
+$stmt->bindValue(3, $offset, PDO::PARAM_INT);
+$stmt->execute();
 $plan_history = $stmt->fetchAll(PDO::FETCH_ASSOC);
+// Count total for pagination
+$stmt = $pdo->prepare('SELECT COUNT(*) FROM investments WHERE user_id = ?');
+$stmt->execute([$user_id]);
+$total_history = $stmt->fetchColumn();
+$total_pages = ceil($total_history / $limit);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -234,7 +250,7 @@ $plan_history = $stmt->fetchAll(PDO::FETCH_ASSOC);
   <!-- Sidebar -->
   <div id="sidebar" class="sidebar">
     <div class="logo mb-4">
-      <img src="public/vault-logo-new.png" alt="Vault Logo" height="48">
+      <img src="/vault-logo-new.png" alt="Vault Logo" height="48" loading="lazy">
     </div>
     <?php foreach ($sidebarLinks as $link): ?>
       <a href="<?=$link['href']?>" class="nav-link<?=basename($_SERVER['PHP_SELF']) === basename($link['href']) ? ' active' : ''?>">
@@ -254,20 +270,20 @@ $plan_history = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <button class="btn btn-outline-info d-lg-none me-3" id="sidebarToggle" aria-label="Open sidebar">
           <i class="bi bi-list" style="font-size:1.7rem;"></i>
         </button>
-        <img src="public/vault-logo-new.png" alt="Vault Logo" class="logo me-3">
+        <img src="/vault-logo-new.png" alt="Vault Logo" class="logo me-3">
         <a href="/" class="back-link"><i class="bi bi-arrow-left"></i> Back to Home</a>
       </div>
       <div><!-- Wallet connection placeholder -->
         <div class="dropdown">
           <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-            <img src="<?=$avatar?>" alt="Profile" width="40" height="40" class="rounded-circle me-2" style="object-fit:cover;">
+            <img src="<?=$avatar?>" alt="Profile" width="40" height="40" class="rounded-circle me-2" style="object-fit:cover;" loading="lazy">
             <span class="d-none d-md-inline text-white fw-semibold">Profile</span>
           </a>
           <ul class="dropdown-menu dropdown-menu-end shadow profile-dropdown-menu" aria-labelledby="profileDropdown">
             <li class="px-3 py-2 border-bottom mb-1" style="min-width:220px;">
               <div class="fw-semibold text-dark mb-0" style="font-size:1.05rem;">{{$displayName}}</div>
               <div class="text-muted" style="font-size:0.95rem;word-break:break-all;">
-                <?=htmlspecialchars($user['email'])?>
+                <?=htmlspecialchars($email)?>
               </div>
             </li>
             <li><a class="dropdown-item" href="profile.php"><i class="bi bi-person me-2"></i>Profile</a></li>
@@ -294,16 +310,13 @@ $plan_history = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <div class="plan-card d-flex flex-column mb-3" style="box-shadow: 0 6px 32px 0 rgba(37,99,235,0.10), 0 1.5px 8px 0 rgba(31,41,55,0.10); border-radius: 1.25rem; background: linear-gradient(135deg, #232b3b 80%, #202736 100%); border: 1.5px solid #2563eb33;">
               <div class="d-flex align-items-center justify-content-between mb-2">
                 <div class="plan-title mb-0" style="font-size:1.18rem; color:#38bdf8; font-weight:700; letter-spacing:0.01em;"> <?=htmlspecialchars($plan['name'])?> </div>
-                <?php if ($plan['bonus'] > 0): ?><span class="badge bg-success ms-2">Bonus</span><?php endif; ?>
               </div>
               <div class="plan-desc mb-2" style="color:#a1a1aa; font-size:1.01rem;"> <?=htmlspecialchars($plan['description'])?> </div>
-              <div class="plan-attr-row"><span class="plan-attr-label">Minimum Stake:</span><span class="plan-attr-value">$<?=number_format($plan['min_investment'],2)?></span></div>
-              <div class="plan-attr-row"><span class="plan-attr-label">Maximum Stake:</span><span class="plan-attr-value">$<?=number_format($plan['max_investment'],2)?></span></div>
-              <div class="plan-attr-row"><span class="plan-attr-label">Daily ROI:</span><span class="plan-attr-value"><?=number_format($plan['daily_roi'],2)?>%</span></div>
-              <div class="plan-attr-row"><span class="plan-attr-label">Monthly ROI:</span><span class="plan-attr-value"><?=number_format($plan['monthly_roi'],2)?>%</span></div>
+              <div class="plan-attr-row"><span class="plan-attr-label">Minimum Stake:</span><span class="plan-attr-value">SOL <?=number_format($plan['min_investment'],2)?></span></div>
+              <div class="plan-attr-row"><span class="plan-attr-label">Maximum Stake:</span><span class="plan-attr-value">SOL <?=number_format($plan['max_investment'],2)?></span></div>
+              <div class="plan-attr-row"><span class="plan-attr-label">Daily ROI:</span><span class="plan-attr-value">SOL <?=number_format($plan['daily_roi'],2)?>%</span></div>
+              <div class="plan-attr-row"><span class="plan-attr-label">Monthly ROI:</span><span class="plan-attr-value">SOL <?=number_format($plan['monthly_roi'],2)?>%</span></div>
               <div class="plan-attr-row"><span class="plan-attr-label">Lock-in:</span><span class="plan-attr-value"><?=$plan['lock_in_duration']?> days</span></div>
-              <?php if ($plan['bonus'] > 0): ?><div class="plan-attr-row"><span class="plan-attr-label">Bonus:</span><span class="plan-attr-value">$<?=number_format($plan['bonus'],2)?></span></div><?php endif; ?>
-              <?php if ($plan['referral_reward'] > 0): ?><div class="plan-attr-row"><span class="plan-attr-label">Referral Reward:</span><span class="plan-attr-value">$<?=number_format($plan['referral_reward'],2)?></span></div><?php endif; ?>
               <div class="plan-footer mt-3">
                 <button class="btn btn-info w-100 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#stakeModal" data-plan-id="<?=$plan['id']?>" data-plan-name="<?=htmlspecialchars($plan['name'])?>" data-min="<?=$plan['min_investment']?>" data-max="<?=$plan['max_investment']?>" data-daily-roi="<?=$plan['daily_roi']?>" data-lockin="<?=$plan['lock_in_duration']?>">Stake Now</button>
               </div>
@@ -316,16 +329,13 @@ $plan_history = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <div class="plan-card-mobile mb-3" style="box-shadow: 0 6px 32px 0 rgba(37,99,235,0.10), 0 1.5px 8px 0 rgba(31,41,55,0.10); border-radius: 1.25rem; background: linear-gradient(135deg, #232b3b 80%, #202736 100%); border: 1.5px solid #2563eb33;">
               <div class="d-flex align-items-center justify-content-between mb-1">
                 <span class="plan-card-title" style="font-size:1.08rem; color:#38bdf8; font-weight:700;"> <?= htmlspecialchars($plan['name']) ?> </span>
-                <?php if ($plan['bonus'] > 0): ?><span class="badge bg-success ms-2">Bonus</span><?php endif; ?>
               </div>
               <div class="plan-card-desc mb-1" style="color:#a1a1aa; font-size:0.97rem;"> <?= htmlspecialchars($plan['description']) ?> </div>
-              <div class="plan-attr-row"><span class="plan-attr-label">Minimum Stake:</span><span class="plan-attr-value">$<?=number_format($plan['min_investment'],2)?></span></div>
-              <div class="plan-attr-row"><span class="plan-attr-label">Maximum Stake:</span><span class="plan-attr-value">$<?=number_format($plan['max_investment'],2)?></span></div>
-              <div class="plan-attr-row"><span class="plan-attr-label">Daily ROI:</span><span class="plan-attr-value"><?=number_format($plan['daily_roi'],2)?>%</span></div>
-              <div class="plan-attr-row"><span class="plan-attr-label">Monthly ROI:</span><span class="plan-attr-value"><?=number_format($plan['monthly_roi'],2)?>%</span></div>
+              <div class="plan-attr-row"><span class="plan-attr-label">Minimum Stake:</span><span class="plan-attr-value">SOL <?=number_format($plan['min_investment'],2)?></span></div>
+              <div class="plan-attr-row"><span class="plan-attr-label">Maximum Stake:</span><span class="plan-attr-value">SOL <?=number_format($plan['max_investment'],2)?></span></div>
+              <div class="plan-attr-row"><span class="plan-attr-label">Daily ROI:</span><span class="plan-attr-value">SOL <?=number_format($plan['daily_roi'],2)?>%</span></div>
+              <div class="plan-attr-row"><span class="plan-attr-label">Monthly ROI:</span><span class="plan-attr-value">SOL <?=number_format($plan['monthly_roi'],2)?>%</span></div>
               <div class="plan-attr-row"><span class="plan-attr-label">Lock-in:</span><span class="plan-attr-value"><?=$plan['lock_in_duration']?> days</span></div>
-              <?php if ($plan['bonus'] > 0): ?><div class="plan-attr-row"><span class="plan-attr-label">Bonus:</span><span class="plan-attr-value">$<?=number_format($plan['bonus'],2)?></span></div><?php endif; ?>
-              <?php if ($plan['referral_reward'] > 0): ?><div class="plan-attr-row"><span class="plan-attr-label">Referral Reward:</span><span class="plan-attr-value">$<?=number_format($plan['referral_reward'],2)?></span></div><?php endif; ?>
               <div class="plan-card-actions mt-2">
                 <button class="btn btn-info w-100 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#stakeModal" data-plan-id="<?=$plan['id']?>" data-plan-name="<?=htmlspecialchars($plan['name'])?>" data-min="<?=$plan['min_investment']?>" data-max="<?=$plan['max_investment']?>" data-daily-roi="<?=$plan['daily_roi']?>" data-lockin="<?=$plan['lock_in_duration']?>">Stake Now</button>
               </div>
@@ -351,16 +361,21 @@ $plan_history = $stmt->fetchAll(PDO::FETCH_ASSOC);
               <?php foreach ($plan_history as $inv): ?>
                 <tr>
                   <td><?=htmlspecialchars($inv['plan_name'])?></td>
-                  <td>$<?=number_format($inv['amount'],2)?></td>
+                  <td>SOL <?=number_format($inv['amount'],2)?></td>
                   <td><span class="badge bg-<?=($inv['status']==='active'?'success':($inv['status']==='completed'?'secondary':'danger'))?> text-uppercase"><?=$inv['status']?></span></td>
                   <td><?=date('M d, Y', strtotime($inv['start_date']))?></td>
                   <td><?=date('M d, Y', strtotime($inv['end_date']))?></td>
-                  <td>$<?=number_format($inv['total_earned'],2)?></td>
+                  <td>SOL <?=number_format($inv['total_earned'],2)?></td>
                 </tr>
               <?php endforeach; ?>
               <?php if (!count($plan_history)): ?><tr><td colspan="6" class="text-center text-muted">No staking history yet.</td></tr><?php endif; ?>
             </tbody>
           </table>
+          <?php if ($total_pages > $page): ?>
+            <div class="text-center mt-3">
+              <button class="btn btn-outline-info load-more-history" data-next-page="<?=($page+1)?>">Load More</button>
+            </div>
+          <?php endif; ?>
         </div>
         <!-- Mobile History List -->
         <div class="history-mobile-list d-md-none mb-5">
@@ -370,13 +385,18 @@ $plan_history = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <span class="history-card-title"><?= htmlspecialchars($inv['plan_name']) ?></span>
                 <span class="badge bg-<?=($inv['status']==='active'?'success':($inv['status']==='completed'?'secondary':'danger'))?> text-uppercase ms-2" style="font-size:0.85em;"> <?=$inv['status']?> </span>
               </div>
-              <div class="history-card-row"><b>Amount:</b> $<?= number_format($inv['amount'], 2) ?></div>
+              <div class="history-card-row"><b>Amount:</b> SOL <?= number_format($inv['amount'], 2) ?></div>
               <div class="history-card-row"><b>Start:</b> <?= date('M d, Y', strtotime($inv['start_date'])) ?></div>
               <div class="history-card-row"><b>End:</b> <?= date('M d, Y', strtotime($inv['end_date'])) ?></div>
-              <div class="history-card-row"><b>Total Earned:</b> $<?= number_format($inv['total_earned'], 2) ?></div>
+              <div class="history-card-row"><b>Total Earned:</b> SOL <?= number_format($inv['total_earned'], 2) ?></div>
             </div>
           <?php endforeach; ?>
           <?php if (!count($plan_history)): ?><div class="text-center text-muted">No staking history yet.</div><?php endif; ?>
+          <?php if ($total_pages > $page): ?>
+            <div class="text-center mt-3">
+              <button class="btn btn-outline-info load-more-history" data-next-page="<?=($page+1)?>">Load More</button>
+            </div>
+          <?php endif; ?>
         </div>
       </div>
       <!-- Stake Modal -->
@@ -398,7 +418,7 @@ $plan_history = $stmt->fetchAll(PDO::FETCH_ASSOC);
                   <label for="stake_amount" class="form-label">Amount</label>
                   <input type="number" class="form-control" id="stake_amount" name="stake_amount" min="0" step="0.01" required>
                   <div class="form-text" id="stakeRange"></div>
-                  <div class="form-text text-warning">Available Balance: $<?=number_format($user_balance,2)?></div>
+                  <div class="form-text text-warning">Available Balance: SOL <?=number_format($user_balance,2)?></div>
                   <div class="form-text text-info" id="expectedReturns"></div>
                 </div>
               </div>
@@ -415,8 +435,8 @@ $plan_history = $stmt->fetchAll(PDO::FETCH_ASSOC);
       &copy; <?=date('Y')?> Vault. All rights reserved.
     </footer>
   </div>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" defer></script>
+  <script defer>
     // Mobile sidebar toggle/overlay (copied from dashboard)
     var sidebar = document.getElementById('sidebar');
     var sidebarOverlay = document.getElementById('sidebarOverlay');
@@ -464,7 +484,7 @@ $plan_history = $stmt->fetchAll(PDO::FETCH_ASSOC);
       document.getElementById('stake_plan_name').value = planName;
       document.getElementById('stake_amount').min = min;
       document.getElementById('stake_amount').max = max;
-      document.getElementById('stakeRange').textContent = `Min: $${parseFloat(min).toFixed(2)} | Max: $${parseFloat(max).toFixed(2)}`;
+      document.getElementById('stakeRange').textContent = `Min: SOL ${parseFloat(min).toFixed(2)} | Max: SOL ${parseFloat(max).toFixed(2)}`;
       document.getElementById('stake_amount').value = '';
       document.getElementById('expectedReturns').textContent = '';
       // Advanced logic: prevent over-staking
@@ -477,7 +497,7 @@ $plan_history = $stmt->fetchAll(PDO::FETCH_ASSOC);
         // Show expected returns
         if (val && dailyRoi && lockin) {
           var total = val * (parseFloat(dailyRoi)/100) * parseInt(lockin);
-          document.getElementById('expectedReturns').textContent = `Expected Earnings: $${total.toFixed(2)} (${lockin} days)`;
+          document.getElementById('expectedReturns').textContent = `Expected Earnings: SOL ${total.toFixed(2)} (${lockin} days)`;
         } else {
           document.getElementById('expectedReturns').textContent = '';
         }
@@ -510,7 +530,16 @@ $plan_history = $stmt->fetchAll(PDO::FETCH_ASSOC);
         modal.hide();
       });
     });
+    // Pagination for staking history
+    document.querySelectorAll('.load-more-history').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var nextPage = parseInt(this.dataset.nextPage);
+        var url = new URL(window.location.href);
+        url.searchParams.set('page', nextPage);
+        window.location.href = url.toString();
+      });
+    });
   </script>
-  <script src="public/sidebar-toggle.js"></script>
+  <script src="public/sidebar-toggle.js" defer></script>
 </body>
 </html> 

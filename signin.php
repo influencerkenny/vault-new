@@ -3,7 +3,7 @@
 session_start();
 
 // Database connection (adjust as needed)
-$pdo = new PDO('mysql:host=localhost;dbname=vault', 'root', '');
+$pdo = new PDO('mysql:host=localhost;dbname=vault_db', 'root', '');
 
 $fields = [
   'email' => '',
@@ -21,15 +21,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (!$fields['password']) $errors['password'] = 'Password is required';
   // Check credentials
   if (!$errors) {
-    $stmt = $pdo->prepare('SELECT id, password_hash FROM users WHERE email = ?');
+    $stmt = $pdo->prepare('SELECT id, password_hash, status FROM users WHERE email = ?');
     $stmt->execute([$fields['email']]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$user || !password_verify($fields['password'], $user['password_hash'])) {
-      $errors['email'] = 'Invalid email or password';
+    if ($user && password_verify($fields['password'], $user['password_hash'])) {
+        if ($user['status'] === 'blocked') {
+            $errors['email'] = "Your account is blocked. Please contact support.";
+        } elseif ($user['status'] === 'suspended') {
+            $errors['email'] = "Your account is suspended. Please contact support.";
+        } else {
+            $success = true;
+            // Set session or cookie as needed
+            $_SESSION['user_id'] = $user['id'];
+        }
     } else {
-      $success = true;
-      // Set session or cookie as needed
-      $_SESSION['user_id'] = $user['id'];
+        $errors['email'] = "Invalid email or password.";
     }
   }
 }
@@ -156,7 +162,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <div class="col-12 col-md-8 col-lg-6 col-xl-5">
         <div class="card p-4 p-md-5 rounded-4">
           <div class="text-center mb-4">
-            <img src="/public/vault-logo.png" alt="Vault Logo" class="logo-img" loading="lazy">
+            <img src="/vault-logo-new.png" alt="Vault Logo" class="logo-img" loading="lazy">
             <h1 class="h3 fw-bold mb-2 text-white">Sign In</h1>
             <p class="text-secondary">Welcome back to Vault</p>
           </div>
@@ -201,6 +207,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </div>
     </div>
   </div>
+
+  <?php if (!empty($errors['email'])): ?>
+  <!-- Bootstrap Modal for Login Error -->
+  <div class="modal fade" id="loginErrorModal" tabindex="-1" aria-labelledby="loginErrorModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content bg-danger text-white">
+        <div class="modal-header border-0">
+          <h5 class="modal-title" id="loginErrorModalLabel">Login Error</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <?=htmlspecialchars($errors['email'])?>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var loginErrorModal = new bootstrap.Modal(document.getElementById('loginErrorModal'));
+    loginErrorModal.show();
+  });
+  </script>
+  <?php endif; ?>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" defer></script>
   <script defer>

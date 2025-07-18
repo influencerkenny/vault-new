@@ -16,14 +16,14 @@ $success = '';
 // Add Plan
 if (isset($_POST['action']) && $_POST['action'] === 'add') {
     // Basic validation
-    $required = ['name','description','daily_roi','monthly_roi','lock_in_duration','min_investment','max_investment','bonus','referral_reward','status'];
+    $required = ['name','description','lock_in_duration','min_investment','max_investment','status','roi_type','roi_mode','roi_value'];
     foreach ($required as $field) {
         if (!isset($_POST[$field]) || $_POST[$field] === '') {
             $errors[] = ucfirst(str_replace('_',' ',$field)) . ' is required.';
         }
     }
     // Numeric validation
-    $numeric = ['daily_roi','monthly_roi','lock_in_duration','min_investment','max_investment','bonus','referral_reward'];
+    $numeric = ['lock_in_duration','min_investment','max_investment','roi_value'];
     foreach ($numeric as $field) {
         if (isset($_POST[$field]) && !is_numeric($_POST[$field])) {
             $errors[] = ucfirst(str_replace('_',' ',$field)) . ' must be a number.';
@@ -31,18 +31,18 @@ if (isset($_POST['action']) && $_POST['action'] === 'add') {
     }
     if (!$errors) {
         try {
-            $stmt = $pdo->prepare("INSERT INTO plans (name, description, daily_roi, monthly_roi, lock_in_duration, min_investment, max_investment, bonus, referral_reward, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt = $pdo->prepare("INSERT INTO plans (name, description, lock_in_duration, min_investment, max_investment, status, currency, roi_type, roi_mode, roi_value) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             $result = $stmt->execute([
                 $_POST['name'],
                 $_POST['description'],
-                $_POST['daily_roi'],
-                $_POST['monthly_roi'],
                 $_POST['lock_in_duration'],
                 $_POST['min_investment'],
                 $_POST['max_investment'],
-                $_POST['bonus'],
-                $_POST['referral_reward'],
-                $_POST['status']
+                $_POST['status'],
+                'SOL',
+                $_POST['roi_type'],
+                $_POST['roi_mode'],
+                $_POST['roi_value']
             ]);
             if ($result) {
                 $success = 'Plan added successfully!';
@@ -50,31 +50,31 @@ if (isset($_POST['action']) && $_POST['action'] === 'add') {
                 $errors[] = 'Failed to add plan.';
             }
         } catch (PDOException $e) {
-            $errors[] = 'Database error: ' . $e->getMessage();
+            $errors[] = 'Failed to add plan: ' . $e->getMessage();
         }
     }
 }
 
 // Edit Plan
 if (isset($_POST['action']) && $_POST['action'] === 'edit' && isset($_POST['id'])) {
-    $stmt = $pdo->prepare("UPDATE plans SET name=?, description=?, daily_roi=?, monthly_roi=?, lock_in_duration=?, min_investment=?, max_investment=?, bonus=?, referral_reward=?, status=? WHERE id=?");
+    $stmt = $pdo->prepare("UPDATE plans SET name=?, description=?, lock_in_duration=?, min_investment=?, max_investment=?, status=?, currency=?, roi_type=?, roi_mode=?, roi_value=? WHERE id=?");
     $result = $stmt->execute([
         $_POST['name'],
         $_POST['description'],
-        $_POST['daily_roi'],
-        $_POST['monthly_roi'],
         $_POST['lock_in_duration'],
         $_POST['min_investment'],
         $_POST['max_investment'],
-        $_POST['bonus'],
-        $_POST['referral_reward'],
         $_POST['status'],
+        'SOL',
+        $_POST['roi_type'],
+        $_POST['roi_mode'],
+        $_POST['roi_value'],
         $_POST['id']
     ]);
     if ($result) {
         $success = 'Plan updated successfully!';
     } else {
-        $errors[] = 'Failed to update plan.';
+        $errors[] = 'Failed to update plan: ' . ($stmt->errorInfo()[2] ?? 'Unknown error');
     }
 }
 
@@ -93,6 +93,14 @@ if (isset($_POST['action']) && $_POST['action'] === 'delete' && isset($_POST['id
 $plans = [];
 $stmt = $pdo->query("SELECT * FROM plans ORDER BY created_at DESC");
 $plans = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Helper: Display ROI as 'X% per week' or '$X per month'
+function display_roi($plan) {
+  $type = isset($plan['roi_type']) ? ucfirst($plan['roi_type']) : 'Daily';
+  $mode = isset($plan['roi_mode']) && $plan['roi_mode'] === 'fixed' ? '$' : '%';
+  $value = isset($plan['roi_value']) ? $plan['roi_value'] : 0;
+  return ($mode === '%' ? $value.'%' : '$'.$value) . ' per ' . strtolower($type);
+}
 
 // After processing Add/Edit/Delete and fetching $plans:
 if (
@@ -116,15 +124,12 @@ if (
           <div class="plan-title"><?= htmlspecialchars($plan['name']) ?> <span class="badge-status badge-<?= $plan['status'] === 'active' ? 'active' : 'inactive' ?>"> <?= ucfirst($plan['status']) ?> </span></div>
           <div class="plan-desc"><?= htmlspecialchars($plan['description']) ?></div>
           <div class="plan-row">
-            <span><i class="bi bi-graph-up"></i> Daily ROI: <b><?= $plan['daily_roi'] ?>%</b></span>
-            <span><i class="bi bi-bar-chart"></i> Monthly ROI: <b><?= $plan['monthly_roi'] ?>%</b></span>
+            <span><i class="bi bi-graph-up"></i> <?= display_roi($plan) ?></span>
             <span><i class="bi bi-lock"></i> Lock-in: <b><?= $plan['lock_in_duration'] ?>d</b></span>
           </div>
           <div class="plan-row">
             <span><i class="bi bi-cash-coin"></i> Min: <b><?= $plan['min_investment'] ?></b></span>
             <span><i class="bi bi-cash-coin"></i> Max: <b><?= $plan['max_investment'] ?></b></span>
-            <span><i class="bi bi-gift"></i> Bonus: <b><?= $plan['bonus'] ?></b></span>
-            <span><i class="bi bi-people"></i> Referral: <b><?= $plan['referral_reward'] ?></b></span>
           </div>
           <div class="plan-actions">
             <button class="btn btn-edit" onclick='openEditModal(<?= json_encode($plan) ?>)'><i class="bi bi-pencil"></i> Edit</button>
@@ -148,17 +153,12 @@ if (
           </div>
           <div class="plan-card-desc"><?= htmlspecialchars($plan['description']) ?></div>
           <div class="plan-card-row">
-            <span><i class="bi bi-graph-up"></i> Daily ROI: <b><?= $plan['daily_roi'] ?>%</b></span>
-            <span><i class="bi bi-bar-chart"></i> Monthly ROI: <b><?= $plan['monthly_roi'] ?>%</b></span>
+            <span><i class="bi bi-graph-up"></i> <?= display_roi($plan) ?></span>
+            <span><i class="bi bi-lock"></i> Lock-in: <b><?= $plan['lock_in_duration'] ?>d</b></span>
           </div>
           <div class="plan-card-row">
-            <span><i class="bi bi-lock"></i> Lock-in: <b><?= $plan['lock_in_duration'] ?>d</b></span>
             <span><i class="bi bi-cash-coin"></i> Min: <b><?= $plan['min_investment'] ?></b></span>
             <span><i class="bi bi-cash-coin"></i> Max: <b><?= $plan['max_investment'] ?></b></span>
-          </div>
-          <div class="plan-card-row">
-            <span><i class="bi bi-gift"></i> Bonus: <b><?= $plan['bonus'] ?></b></span>
-            <span><i class="bi bi-people"></i> Referral: <b><?= $plan['referral_reward'] ?></b></span>
           </div>
           <div class="plan-card-actions" style="margin-top:10px;">
             <button class="icon-btn icon-btn-edit" title="Edit" onclick='openEditModal(<?= json_encode($plan) ?>)'><i class="bi bi-pencil"></i></button>
@@ -181,12 +181,13 @@ if (
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - Manage Plans</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Removed Google Fonts link due to network issues -->
+    <!--<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">-->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="../styles/globals.css">
     <style>
-        body { font-family: 'Inter', sans-serif; background: #0f172a; color: #e5e7eb; }
+        body { font-family: 'Inter', Arial, sans-serif; background: #0f172a; color: #e5e7eb; }
         .main-content { margin-left: 260px; min-height: 100vh; background: #0f172a; position: relative; z-index: 1; display: flex; flex-direction: column; }
         .plans-container { max-width: 1200px; width: 100%; margin: 40px auto; background: #181f2a; border-radius: 18px; box-shadow: 0 4px 32px #0003; padding: 36px 20px 28px 20px; }
         .plans-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; flex-wrap: wrap; gap: 12px; }
@@ -468,8 +469,6 @@ if (
             <th class="text-end">Lock-in (days)</th>
             <th class="text-end">Min Invest</th>
             <th class="text-end">Max Invest</th>
-            <th class="text-end">Bonus</th>
-            <th class="text-end">Referral</th>
             <th>Status</th>
             <th>Actions</th>
           </tr>
@@ -479,21 +478,30 @@ if (
           <tr>
             <td><?= htmlspecialchars($plan['name']) ?></td>
             <td><?= htmlspecialchars($plan['description']) ?></td>
-            <td class="text-end"><?= number_format($plan['daily_roi'], 2) ?></td>
-            <td class="text-end"><?= number_format($plan['monthly_roi'], 2) ?></td>
+            <td class="text-end"><?= display_roi($plan) ?></td>
+            <td class="text-end"><?= display_roi($plan) ?></td>
             <td class="text-end"><?= $plan['lock_in_duration'] ?></td>
             <td class="text-end"><?= number_format($plan['min_investment'], 2) ?></td>
             <td class="text-end"><?= number_format($plan['max_investment'], 2) ?></td>
-            <td class="text-end"><?= number_format($plan['bonus'], 2) ?></td>
-            <td class="text-end"><?= number_format($plan['referral_reward'], 2) ?></td>
             <td><span class="badge bg-<?= $plan['status'] === 'active' ? 'success' : 'secondary' ?>"><?= ucfirst($plan['status']) ?></span></td>
             <td>
-              <button class="btn btn-sm btn-warning" onclick='openEditModal(<?= json_encode($plan) ?>)'>Edit</button>
-              <form method="post" style="display:inline;" onsubmit="return confirm('Delete this plan?');">
-                <input type="hidden" name="action" value="delete">
-                <input type="hidden" name="id" value="<?= $plan['id'] ?>">
-                <button class="btn btn-sm btn-danger">Delete</button>
-              </form>
+              <div class="dropdown">
+                <button class="btn btn-sm btn-info dropdown-toggle" type="button" id="dropdownMenuButtonPlan<?=$plan['id']?>" data-bs-toggle="dropdown" aria-expanded="false">
+                  Actions
+                </button>
+                <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="dropdownMenuButtonPlan<?=$plan['id']?>">
+                  <li>
+                    <button class="dropdown-item" type="button" onclick='openEditModal(<?= json_encode($plan) ?>)'><i class="bi bi-pencil me-2"></i>Edit</button>
+                  </li>
+                  <li>
+                    <form method="post" style="display:inline;">
+                      <input type="hidden" name="action" value="delete">
+                      <input type="hidden" name="id" value="<?= $plan['id'] ?>">
+                      <button class="dropdown-item text-danger" type="submit" onclick="return confirm('Delete this plan?');"><i class="bi bi-trash me-2"></i>Delete</button>
+                    </form>
+                  </li>
+                </ul>
+              </div>
             </td>
           </tr>
           <?php endforeach; ?>
@@ -514,11 +522,9 @@ if (
           <ul style="list-style:none;padding:0;margin:0;">
             <li><b>Minimum Stake:</b> <span style="float:right; color:#38bdf8; font-weight:600;">$<?= number_format($plan['min_investment'], 2) ?></span></li>
             <li><b>Maximum Stake:</b> <span style="float:right; color:#38bdf8; font-weight:600;">$<?= number_format($plan['max_investment'], 2) ?></span></li>
-            <li><b>Daily ROI:</b> <span style="float:right; color:#38bdf8; font-weight:600;"><?= number_format($plan['daily_roi'], 2) ?>%</span></li>
-            <li><b>Monthly ROI:</b> <span style="float:right; color:#38bdf8; font-weight:600;"><?= number_format($plan['monthly_roi'], 2) ?>%</span></li>
+            <li><b>Daily ROI:</b> <span style="float:right; color:#38bdf8; font-weight:600;"><?= display_roi($plan) ?></span></li>
+            <li><b>Monthly ROI:</b> <span style="float:right; color:#38bdf8; font-weight:600;"><?= display_roi($plan) ?></span></li>
             <li><b>Lock-in:</b> <span style="float:right; color:#38bdf8; font-weight:600;"><?= $plan['lock_in_duration'] ?> days</span></li>
-            <li><b>Bonus:</b> <span style="float:right; color:#38bdf8; font-weight:600;">$<?= number_format($plan['bonus'], 2) ?></span></li>
-            <li><b>Referral Reward:</b> <span style="float:right; color:#38bdf8; font-weight:600;">$<?= number_format($plan['referral_reward'], 2) ?></span></li>
           </ul>
           <div class="plan-card-actions" style="margin-top:10px;">
             <button class="icon-btn icon-btn-edit" title="Edit" onclick='openEditModal(<?= json_encode($plan) ?>)'><i class="bi bi-pencil"></i></button>
@@ -548,15 +554,27 @@ if (
                 <textarea name="description" id="planDesc" required></textarea>
             </div>
             <div class="modal-section modal-fields-row">
-                <label for="planDailyRoi">Daily ROI (%)<br><input type="number" step="0.01" name="daily_roi" id="planDailyRoi" required></label>
-                <label for="planMonthlyRoi">Monthly ROI (%)<br><input type="number" step="0.01" name="monthly_roi" id="planMonthlyRoi" required></label>
-                <label for="planLockIn">Lock-in (days)<br><input type="number" name="lock_in_duration" id="planLockIn" required></label>
+                <label for="planRoiType">ROI Type<br>
+                  <select name="roi_type" id="planRoiType" required>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                  </select>
+                </label>
+                <label for="planRoiMode">ROI Mode<br>
+                  <select name="roi_mode" id="planRoiMode" required>
+                    <option value="percent">Percent (%)</option>
+                    <option value="fixed">Fixed ($)</option>
+                  </select>
+                </label>
+                <label for="planRoiValue" id="planRoiValueLabel">ROI Value<br>
+                  <input type="number" step="0.0001" name="roi_value" id="planRoiValue" required>
+                </label>
             </div>
             <div class="modal-section modal-fields-row">
+                <label for="planLockIn">Lock-in (days)<br><input type="number" name="lock_in_duration" id="planLockIn" required></label>
                 <label for="planMinInvest">Min Invest<br><input type="number" step="0.00000001" name="min_investment" id="planMinInvest" required></label>
                 <label for="planMaxInvest">Max Invest<br><input type="number" step="0.00000001" name="max_investment" id="planMaxInvest" required></label>
-                <label for="planBonus">Bonus<br><input type="number" step="0.00000001" name="bonus" id="planBonus" required></label>
-                <label for="planReferral">Referral Reward<br><input type="number" step="0.00000001" name="referral_reward" id="planReferral" required></label>
             </div>
             <div class="modal-section">
                 <label for="planStatus">Status</label>
@@ -565,6 +583,7 @@ if (
                     <option value="inactive">Inactive</option>
                 </select>
             </div>
+            <input type="hidden" name="currency" value="SOL">
             <button class="btn" type="submit" id="modalSubmitBtn">Add Plan</button>
             <input type="hidden" name="action" value="add" id="formAction">
             <input type="hidden" name="id" id="planId">
@@ -581,6 +600,9 @@ function openAddModal() {
     document.getElementById('modalSubmitBtn').innerText = 'Add Plan';
     document.getElementById('planForm').reset();
     document.getElementById('planId').value = '';
+    document.getElementById('planRoiType').value = 'daily';
+    document.getElementById('planRoiMode').value = 'percent';
+    updateRoiValueLabel();
     document.getElementById('planModal').classList.add('active');
     console.log('modal element:', document.getElementById('planModal'));
     console.log('modal classes:', document.getElementById('planModal').className);
@@ -593,13 +615,13 @@ function openEditModal(plan) {
     document.getElementById('planId').value = plan.id;
     document.getElementById('planName').value = plan.name;
     document.getElementById('planDesc').value = plan.description;
-    document.getElementById('planDailyRoi').value = plan.daily_roi;
-    document.getElementById('planMonthlyRoi').value = plan.monthly_roi;
+    document.getElementById('planRoiType').value = plan.roi_type || 'daily';
+    document.getElementById('planRoiMode').value = plan.roi_mode || 'percent';
+    updateRoiValueLabel();
+    document.getElementById('planRoiValue').value = plan.roi_value;
     document.getElementById('planLockIn').value = plan.lock_in_duration;
     document.getElementById('planMinInvest').value = plan.min_investment;
     document.getElementById('planMaxInvest').value = plan.max_investment;
-    document.getElementById('planBonus').value = plan.bonus;
-    document.getElementById('planReferral').value = plan.referral_reward;
     document.getElementById('planStatus').value = plan.status;
     document.getElementById('planModal').classList.add('active');
 }
@@ -634,7 +656,6 @@ if (planForm) {
                 }
             });
             const text = await res.text();
-            console.log('AJAX RESPONSE:', text);
             // Try to parse returned HTML and update the plans grid
             const parser = new DOMParser();
             const doc = parser.parseFromString(text, 'text/html');
@@ -649,14 +670,15 @@ if (planForm) {
             const newSuccess = doc.querySelector('div[style*="background:#22c55e"]');
             const newError = doc.querySelector('div[style*="background:#ef4444"]');
             if (newSuccess) {
+                // Show a toast or alert, then close modal
                 alert(newSuccess.textContent.trim());
                 closeModal();
             } else if (newError) {
                 alert(newError.textContent.trim());
             }
         } catch (err) {
-            console.error('AJAX fetch error:', err);
-            alert('Network or server error.');
+            // Remove any generic network/server error message
+            alert('An unexpected error occurred. Please try again.');
         } finally {
             document.getElementById('modalSubmitBtn').disabled = false;
             document.getElementById('modalSubmitBtn').innerText = (action === 'add' ? 'Add Plan' : 'Update Plan');
@@ -704,15 +726,40 @@ function handleDeleteForms() {
     });
 }
 handleDeleteForms();
+
+// Update ROI label based on type/mode
+function updateRoiValueLabel() {
+  var type = document.getElementById('planRoiType').value;
+  var mode = document.getElementById('planRoiMode').value;
+  var label = 'ROI Value';
+  if (mode === 'percent') {
+    label = 'ROI Value (' + type.charAt(0).toUpperCase() + type.slice(1) + ' %)' ;
+  } else {
+    label = 'ROI Value (' + type.charAt(0).toUpperCase() + type.slice(1) + ' $)';
+  }
+  var labelElem = document.getElementById('planRoiValueLabel');
+  if (labelElem) {
+    labelElem.innerHTML = label + '<br><input type="number" step="0.0001" name="roi_value" id="planRoiValue" required>';
+  }
+}
+document.getElementById('planRoiType').addEventListener('change', updateRoiValueLabel);
+document.getElementById('planRoiMode').addEventListener('change', updateRoiValueLabel);
 </script>
 <!-- Mobile Sidebar Overlay -->
 <div id="sidebarOverlay" class="sidebar-mobile-overlay"></div>
 <!-- Sidebar -->
 <!-- The sidebar is likely included via include 'sidebar.php'; -->
 <!-- Hamburger for mobile -->
-<button class="btn btn-outline-info d-lg-none me-3" id="sidebarToggle" aria-label="Open sidebar">
-  <i class="bi bi-list" style="font-size:1.7rem;"></i>
-</button>
-<script src="/public/sidebar-toggle.js"></script>
+<!-- Removed extra mobile sidebar toggle button here -->
+<!-- Place Bootstrap JS CDN before closing body tag -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  // Prevent dropdown from closing when clicking inside the form
+  document.querySelectorAll('.dropdown-menu form').forEach(function(form) {
+    form.addEventListener('click', function(e) {
+      e.stopPropagation();
+    });
+  });
+</script>
 </body>
 </html> 

@@ -8,7 +8,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 // Database connection (adjust as needed)
-$pdo = new PDO('mysql:host=localhost;dbname=vault', 'root', '');
+$pdo = new PDO('mysql:host=localhost;dbname=vault_db', 'root', '');
 
 // Fetch user info
 $stmt = $pdo->prepare('SELECT first_name, last_name, email, avatar FROM users WHERE id = ?');
@@ -22,36 +22,59 @@ $stmt = $pdo->prepare('SELECT COUNT(*) FROM notifications WHERE user_id = ? AND 
 $stmt->execute([$_SESSION['user_id']]);
 $unreadCount = (int)$stmt->fetchColumn();
 
+// Fetch recent notifications for dropdown
+$stmt = $pdo->prepare('SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 5');
+$stmt->execute([$_SESSION['user_id']]);
+$notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 // Fetch portfolio data (replace with real queries)
 $availableBalance = 0.00;
 $stakedAmount = 0.00;
 $totalRewards = 0.00;
 
-// Available Balance
-$stmt = $pdo->prepare('SELECT available_balance FROM user_balances WHERE user_id = ?');
+// Total Deposits (sum of all completed deposits)
+$stmt = $pdo->prepare("SELECT SUM(amount) AS total_deposits FROM transactions WHERE user_id = ? AND type = 'deposit' AND status = 'completed'");
 $stmt->execute([$_SESSION['user_id']]);
+$totalDeposits = 0.00;
 if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-  $availableBalance = (float)$row['available_balance'];
+  $totalDeposits = (float)$row['total_deposits'] ?: 0.00;
 }
-// Staked Amount
+
+// Staked Amount (sum of all active stakes)
 $stmt = $pdo->prepare("SELECT SUM(amount) AS staked FROM user_stakes WHERE user_id = ? AND status = 'active'");
 $stmt->execute([$_SESSION['user_id']]);
 if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
   $stakedAmount = (float)$row['staked'] ?: 0.00;
 }
+
+// Total Withdrawals (sum of all completed withdrawals)
+$stmt = $pdo->prepare("SELECT SUM(amount) AS total_withdrawals FROM transactions WHERE user_id = ? AND type = 'withdrawal' AND status = 'completed'");
+$stmt->execute([$_SESSION['user_id']]);
+$totalWithdrawals = 0.00;
+if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+  $totalWithdrawals = (float)$row['total_withdrawals'] ?: 0.00;
+}
+
 // Total Rewards
 $stmt = $pdo->prepare('SELECT SUM(amount) AS rewards FROM user_rewards WHERE user_id = ?');
 $stmt->execute([$_SESSION['user_id']]);
 if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
   $totalRewards = (float)$row['rewards'] ?: 0.00;
 }
-// Total Portfolio
-$totalPortfolio = $availableBalance + $stakedAmount + $totalRewards;
+
+// Calculate Available Balance: Total Deposits - Staked Amount - Total Withdrawals + Total Rewards
+$availableBalance = $totalDeposits - $stakedAmount - $totalWithdrawals + $totalRewards;
+
+// Ensure available balance doesn't go negative
+if ($availableBalance < 0) {
+  $availableBalance = 0.00;
+}
+
 // Portfolio Change & APY (placeholder)
 $portfolioChange = 12.5;
 $apy = 12.8;
 $portfolio = [
-  'totalBalance' => $totalPortfolio,
+  'totalBalance' => $totalDeposits,
   'stakedAmount' => $stakedAmount,
   'availableBalance' => $availableBalance,
   'totalRewards' => $totalRewards,
@@ -96,6 +119,14 @@ if (isset($_GET['logout'])) {
   session_destroy();
   header('Location: signin.php');
   exit;
+}
+
+function sol_display($amount) {
+  return '<span class="sol-value">' . number_format($amount, 2) . ' SOL</span>';
+}
+function usdt_placeholder($amount) {
+  // Placeholder span for JS to fill in
+  return '<span class="usdt-convert" data-sol="' . htmlspecialchars($amount, ENT_QUOTES) . '">≈ $--.-- USDT</span>';
 }
 ?>
 <!DOCTYPE html>
@@ -305,6 +336,55 @@ if (isset($_GET['logout'])) {
       background: #7f1d1d22;
       color: #f87171;
     }
+    .notification-dropdown-menu {
+      border-radius: 1rem;
+      box-shadow: 0 8px 32px 0 rgba(31,41,55,0.18);
+      min-width: 320px;
+      max-width: 400px;
+      padding-top: 0.5rem;
+      padding-bottom: 0.5rem;
+    }
+    .notification-dropdown-menu .dropdown-item {
+      border-radius: 0.5rem;
+      transition: background 0.18s, color 0.18s;
+      padding: 0.75rem;
+    }
+    .notification-dropdown-menu .dropdown-item:hover, .notification-dropdown-menu .dropdown-item:focus {
+      background: linear-gradient(90deg, #2563eb22 0%, #0ea5e922 100%);
+      color: #2563eb;
+    }
+    .notification-item.unread {
+      background: linear-gradient(90deg, #2563eb11 0%, #0ea5e911 100%);
+      border-left: 3px solid #2563eb;
+    }
+    .notification-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #6b7280;
+    }
+    .notification-icon.unread {
+      background: #2563eb;
+      color: white;
+    }
+    @media (max-width: 575px) {
+      .notification-dropdown-menu {
+        min-width: 280px;
+        max-width: 90vw;
+        margin-right: 0.5rem;
+      }
+      .notification-dropdown-menu .dropdown-item {
+        padding: 0.5rem;
+      }
+      .notification-icon {
+        width: 28px;
+        height: 28px;
+      }
+    }
     .chart-card {
       box-shadow: 0 6px 32px 0 rgba(37,99,235,0.10), 0 1.5px 8px 0 rgba(31,41,55,0.10);
       border-radius: 1.25rem;
@@ -367,13 +447,39 @@ if (isset($_GET['logout'])) {
         padding: 0.4rem 0.7rem;
       }
     }
+    .usdt-convert {
+      display: block;
+      font-size: 0.6em;
+      color: #94a3b8;
+      margin-top: 0.1em;
+      transition: color 0.3s ease;
+    }
+    .usdt-convert.loading {
+      color: #fbbf24;
+      animation: pulse 1.5s infinite;
+    }
+    .usdt-convert.error {
+      color: #ef4444;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    td .usdt-convert, td .sol-value {
+      font-size: 0.6em;
+    }
+    .sol-value {
+      font-size: 0.65em;
+      color: #38bdf8;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
   <!-- Sidebar -->
   <div id="sidebar" class="sidebar">
     <div class="logo mb-4">
-      <img src="public/vault-logo-new.png" alt="Vault Logo" height="48">
+      <img src="/vault-logo-new.png" alt="Vault Logo" height="48">
     </div>
     <?php foreach (
       $sidebarLinks as $link): ?>
@@ -394,10 +500,59 @@ if (isset($_GET['logout'])) {
         <button class="btn btn-outline-info d-lg-none me-3" id="sidebarToggle" aria-label="Open sidebar">
           <i class="bi bi-list" style="font-size:1.7rem;"></i>
         </button>
-        <img src="public/vault-logo-new.png" alt="Vault Logo" class="logo me-3">
+        <img src="/vault-logo-new.png" alt="Vault Logo" class="logo me-3">
         <a href="/" class="back-link"><i class="bi bi-arrow-left"></i> Back to Home</a>
       </div>
       <div><!-- Wallet connection placeholder -->
+        <!-- Notification Dropdown -->
+        <div class="dropdown me-3">
+          <button class="btn btn-outline-info position-relative" type="button" id="notificationDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-bell" style="font-size:1.2rem;"></i>
+            <?php if($unreadCount > 0): ?>
+              <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:0.7rem;">
+                <?=$unreadCount > 9 ? '9+' : $unreadCount?>
+              </span>
+            <?php endif; ?>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow notification-dropdown-menu" aria-labelledby="notificationDropdown" style="min-width:320px; max-width:400px;">
+            <li class="px-3 py-2 border-bottom">
+              <div class="d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 text-dark fw-bold">Notifications</h6>
+                <?php if($unreadCount > 0): ?>
+                  <a href="notifications.php" class="text-info text-decoration-none small">Mark all read</a>
+                <?php endif; ?>
+              </div>
+            </li>
+            <?php if(count($notifications) > 0): ?>
+              <?php foreach($notifications as $notif): ?>
+                <li>
+                  <a class="dropdown-item notification-item <?=$notif['is_read'] == 0 ? 'unread' : ''?>" href="#" data-notification-id="<?=$notif['id']?>">
+                    <div class="d-flex align-items-start">
+                      <div class="flex-shrink-0">
+                        <div class="notification-icon <?=$notif['is_read'] == 0 ? 'unread' : ''?>">
+                          <i class="bi bi-info-circle"></i>
+                        </div>
+                      </div>
+                      <div class="flex-grow-1 ms-2">
+                        <div class="fw-semibold text-dark mb-1" style="font-size:0.9rem;"><?=htmlspecialchars($notif['title'])?></div>
+                        <div class="text-muted small mb-1" style="font-size:0.8rem; line-height:1.3;"><?=htmlspecialchars($notif['message'])?></div>
+                        <div class="text-muted" style="font-size:0.75rem;"><?=date('M j, g:i A', strtotime($notif['created_at']))?></div>
+                      </div>
+                    </div>
+                  </a>
+                </li>
+              <?php endforeach; ?>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item text-center text-info" href="notifications.php"><i class="bi bi-arrow-right me-1"></i>View All Notifications</a></li>
+            <?php else: ?>
+              <li class="px-3 py-3 text-center text-muted">
+                <i class="bi bi-bell-slash mb-2" style="font-size:1.5rem;"></i>
+                <div>No notifications yet</div>
+              </li>
+            <?php endif; ?>
+          </ul>
+        </div>
+        <!-- Profile Dropdown -->
         <div class="dropdown">
           <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
             <img src="<?=$avatar?>" alt="Profile" width="40" height="40" class="rounded-circle me-2" style="object-fit:cover;">
@@ -430,27 +585,37 @@ if (isset($_GET['logout'])) {
         <button id="toggleBalance" class="btn btn-sm btn-outline-info" type="button" aria-label="Toggle balance visibility">
           <i id="balanceIcon" class="bi bi-eye"></i>
         </button>
+        <div class="ms-auto d-flex align-items-center">
+          <small class="text-muted me-2">
+            <i class="bi bi-currency-exchange me-1"></i>
+            SOL Price: <span id="solPrice" class="text-info">$--.--</span>
+          </small>
+          <small class="text-muted">
+            <i class="bi bi-clock me-1"></i>
+            Updated: <span id="lastUpdate" class="text-muted">--:--</span>
+          </small>
+        </div>
       </div>
       <!-- Portfolio cards row -->
       <div class="portfolio-cards mb-4">
         <div class="portfolio-card balance">
-          <div class="card-title">Total Portfolio</div>
-          <div class="card-value balance-value">$<?=number_format($portfolio['totalBalance'],2)?></div>
-          <div class="card-footer">+<?=number_format($portfolio['portfolioChange'],1)?>% this month</div>
+          <div class="card-title">Total Deposits</div>
+          <div class="card-value balance-value"><?=sol_display($totalDeposits)?><?=usdt_placeholder($totalDeposits)?></div>
+          <div class="card-footer">All approved deposits</div>
         </div>
         <div class="portfolio-card staked">
           <div class="card-title">Staked Amount</div>
-          <div class="card-value balance-value">$<?=number_format($portfolio['stakedAmount'],2)?></div>
+          <div class="card-value balance-value"><?=sol_display($portfolio['stakedAmount'])?><?=usdt_placeholder($portfolio['stakedAmount'])?></div>
           <div class="card-footer">APY: <?=number_format($portfolio['apy'],1)?>%</div>
         </div>
         <div class="portfolio-card rewards">
           <div class="card-title">Total Rewards</div>
-          <div class="card-value balance-value">$<?=number_format($portfolio['totalRewards'],2)?></div>
+          <div class="card-value balance-value"><?=sol_display($portfolio['totalRewards'])?><?=usdt_placeholder($portfolio['totalRewards'])?></div>
           <div class="card-footer">Daily earnings</div>
         </div>
         <div class="portfolio-card total">
           <div class="card-title">Available Balance</div>
-          <div class="card-value balance-value">$<?=number_format($portfolio['availableBalance'],2)?></div>
+          <div class="card-value balance-value"><?=sol_display($portfolio['availableBalance'])?><?=usdt_placeholder($portfolio['availableBalance'])?></div>
           <div class="card-footer">Ready to stake</div>
         </div>
       </div>
@@ -490,7 +655,7 @@ if (isset($_GET['logout'])) {
                 <tbody>
                   <?php if (count($stakes)): foreach ($stakes as $s): ?>
                   <tr>
-                    <td>$<?=number_format($s['amount'],2)?></td>
+                    <td><?=sol_display($s['amount'])?><?=usdt_placeholder($s['amount'])?></td>
                     <td><span class="badge bg-<?=($s['status']==='active'?'success':($s['status']==='completed'?'secondary':'danger'))?> text-uppercase"><?=$s['status']?></span></td>
                     <td><?=$s['plan_id']??'-'?></td>
                     <td><?=date('M j, Y', strtotime($s['started_at']))?></td>
@@ -523,7 +688,7 @@ if (isset($_GET['logout'])) {
                   <tr>
                     <td><?=date('M d, Y H:i', strtotime($tx['created_at']))?></td>
                     <td><?=ucfirst($tx['type'])?></td>
-                    <td>$<?=number_format($tx['amount'],2)?></td>
+                    <td><?=sol_display($tx['amount'])?><?=usdt_placeholder($tx['amount'])?></td>
                     <td>
                       <?php if ($tx['status'] === 'completed'): ?>
                         <span class="badge bg-success text-uppercase">Completed</span>
@@ -629,7 +794,7 @@ if (isset($_GET['logout'])) {
             
     </main>
     <footer class="dashboard-footer">
-      <img src="public/vault-logo-new.png" alt="Vault Logo" height="32" class="mb-2">
+      <img src="/vault-logo-new.png" alt="Vault Logo" height="32" class="mb-2">
       <div class="mb-2">
         <a href="plans.php" class="text-info me-3">Staking Plans</a>
         <a href="roadmap.php" class="text-info">Roadmap</a>
@@ -640,9 +805,9 @@ if (isset($_GET['logout'])) {
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script>
-    const sidebar = document.getElementById('sidebar');
-    const sidebarOverlay = document.getElementById('sidebarOverlay');
-    const sidebarToggle = document.getElementById('sidebarToggle');
+    var sidebar = document.getElementById('sidebar');
+    var sidebarOverlay = document.getElementById('sidebarOverlay');
+    var sidebarToggle = document.getElementById('sidebarToggle');
     function openSidebar() {
       sidebar.classList.add('active');
       sidebarOverlay.classList.add('active');
@@ -657,13 +822,202 @@ if (isset($_GET['logout'])) {
     if (sidebarOverlay) {
       sidebarOverlay.addEventListener('click', closeSidebar);
     }
-    // Close sidebar on nav link click (mobile)
     document.querySelectorAll('.sidebar .nav-link').forEach(function(link) {
-      link.addEventListener('click', function() {
-        if (window.innerWidth < 992) closeSidebar();
+      link.addEventListener('click', function() { if (window.innerWidth < 992) closeSidebar(); });
+    });
+
+    // Notification functionality
+    document.querySelectorAll('.notification-item').forEach(function(item) {
+      item.addEventListener('click', function(e) {
+        e.preventDefault();
+        const notificationId = this.getAttribute('data-notification-id');
+        if (notificationId) {
+          // Mark notification as read via AJAX
+          fetch('api/mark_notification_read.php', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ notification_id: notificationId })
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              // Remove unread styling
+              this.classList.remove('unread');
+              this.querySelector('.notification-icon').classList.remove('unread');
+              
+              // Update unread count
+              const badge = document.querySelector('#notificationDropdown .badge');
+              if (badge) {
+                const currentCount = parseInt(badge.textContent);
+                if (currentCount > 1) {
+                  badge.textContent = currentCount - 1;
+                } else {
+                  badge.remove();
+                }
+              }
+            }
+          })
+          .catch(error => console.error('Error marking notification as read:', error));
+        }
       });
     });
-    // Responsive sidebar
+
+    // Auto-refresh notifications every 30 seconds
+    setInterval(function() {
+      fetch('api/get_notifications_count.php')
+        .then(response => response.json())
+        .then(data => {
+          const badge = document.querySelector('#notificationDropdown .badge');
+          if (data.unread_count > 0) {
+            if (badge) {
+              badge.textContent = data.unread_count > 9 ? '9+' : data.unread_count;
+            } else {
+              const newBadge = document.createElement('span');
+              newBadge.className = 'position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger';
+              newBadge.style.fontSize = '0.7rem';
+              newBadge.textContent = data.unread_count > 9 ? '9+' : data.unread_count;
+              document.querySelector('#notificationDropdown').appendChild(newBadge);
+            }
+          } else if (badge) {
+            badge.remove();
+          }
+        })
+        .catch(error => console.error('Error updating notification count:', error));
+    }, 30000);
+
+    // Auto-refresh balance every 60 seconds
+    function updateBalance() {
+      fetch('api/update_user_balance.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'get_balance' })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          const balance = data.balance;
+          
+          // Update Total Deposits
+          const totalDepositsElement = document.querySelector('.portfolio-card.balance .card-value');
+          if (totalDepositsElement) {
+            totalDepositsElement.innerHTML = sol_display(balance.total_deposits) + usdt_placeholder(balance.total_deposits);
+          }
+          
+          // Update Staked Amount
+          const stakedElement = document.querySelector('.portfolio-card.staked .card-value');
+          if (stakedElement) {
+            stakedElement.innerHTML = sol_display(balance.staked_amount) + usdt_placeholder(balance.staked_amount);
+          }
+          
+          // Update Total Rewards
+          const rewardsElement = document.querySelector('.portfolio-card.rewards .card-value');
+          if (rewardsElement) {
+            rewardsElement.innerHTML = sol_display(balance.total_rewards) + usdt_placeholder(balance.total_rewards);
+          }
+          
+          // Update Available Balance
+          const availableElement = document.querySelector('.portfolio-card.total .card-value');
+          if (availableElement) {
+            availableElement.innerHTML = sol_display(balance.available_balance) + usdt_placeholder(balance.available_balance);
+          }
+          
+          // Update USDT conversions after balance update
+          setTimeout(updateAllUsdtConversions, 100);
+        }
+      })
+      .catch(error => console.error('Error updating balance:', error));
+    }
+
+    // Update balance every 60 seconds
+    setInterval(updateBalance, 60000);
+
+    // Helper functions for balance display
+    function sol_display(amount) {
+      return '<span class="sol-value">' + parseFloat(amount).toFixed(2) + ' SOL</span>';
+    }
+    
+    function usdt_placeholder(amount) {
+      return '<span class="usdt-convert" data-sol="' + amount + '">≈ $--.-- USDT</span>';
+    }
+
+    // SOL to USDT conversion functionality
+    let solToUsdtRate = 0;
+    
+    // Show loading state for USDT conversions
+    function showUsdtLoading() {
+      const usdtElements = document.querySelectorAll('.usdt-convert');
+      usdtElements.forEach(element => {
+        element.classList.add('loading');
+        element.textContent = '≈ $--.-- USDT (Loading...)';
+      });
+    }
+    
+    // Show error state for USDT conversions
+    function showUsdtError() {
+      const usdtElements = document.querySelectorAll('.usdt-convert');
+      usdtElements.forEach(element => {
+        element.classList.remove('loading');
+        element.classList.add('error');
+        element.textContent = '≈ $--.-- USDT (Rate Unavailable)';
+      });
+    }
+    
+    // Fetch SOL to USDT conversion rate
+    async function fetchSolToUsdtRate() {
+      showUsdtLoading();
+      
+      try {
+        const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd');
+        const data = await response.json();
+        
+        if (data.solana && data.solana.usd) {
+          solToUsdtRate = data.solana.usd;
+          updateAllUsdtConversions();
+        } else {
+          throw new Error('Invalid response format');
+        }
+      } catch (error) {
+        console.error('Error fetching SOL to USDT rate:', error);
+        // Fallback rate if API fails
+        solToUsdtRate = 100; // Approximate SOL price
+        updateAllUsdtConversions();
+        showUsdtError();
+      }
+    }
+    
+    // Update all USDT conversions on the page
+    function updateAllUsdtConversions() {
+      const usdtElements = document.querySelectorAll('.usdt-convert');
+      usdtElements.forEach(element => {
+        const solAmount = parseFloat(element.getAttribute('data-sol') || 0);
+        const usdtAmount = solAmount * solToUsdtRate;
+        
+        element.classList.remove('loading', 'error');
+        element.textContent = `≈ $${usdtAmount.toFixed(2)} USDT`;
+      });
+      
+      // Update SOL price indicator
+      const solPriceElement = document.getElementById('solPrice');
+      if (solPriceElement) {
+        solPriceElement.textContent = `$${solToUsdtRate.toFixed(2)}`;
+      }
+      
+      // Update last update time
+      const lastUpdateElement = document.getElementById('lastUpdate');
+      if (lastUpdateElement) {
+        const now = new Date();
+        lastUpdateElement.textContent = now.toLocaleTimeString();
+      }
+    }
+    
+    // Initialize conversion rate and update every 5 minutes
+    fetchSolToUsdtRate();
+    setInterval(fetchSolToUsdtRate, 300000); // Update every 5 minutes
+
     window.addEventListener('resize', function() {
       if (window.innerWidth >= 992) {
         sidebar.classList.remove('d-none');

@@ -4,7 +4,7 @@ if (!isset($_SESSION['user_id'])) {
   header('Location: signin.php');
   exit;
 }
-$pdo = new PDO('mysql:host=localhost;dbname=vault', 'root', '');
+$pdo = new PDO('mysql:host=localhost;dbname=vault_db', 'root', '');
 $user_id = $_SESSION['user_id'];
 $success = $error = '';
 // Handle classic POST
@@ -126,7 +126,7 @@ $twofa_enabled = $user_twofa ? (int)$user_twofa['twofa_enabled'] : 0;
   <!-- Sidebar -->
   <div id="sidebar" class="sidebar d-none d-lg-flex flex-column">
     <div class="logo mb-4">
-      <img src="public/vault-logo-new.png" alt="Vault Logo" height="48">
+      <img src="/vault-logo-new.png" alt="Vault Logo" height="48">
     </div>
     <?php foreach ($sidebarLinks as $link): ?>
       <a href="<?=$link['href']?>" class="nav-link<?=basename($_SERVER['PHP_SELF']) === basename($link['href']) ? ' active' : ''?>">
@@ -144,7 +144,7 @@ $twofa_enabled = $user_twofa ? (int)$user_twofa['twofa_enabled'] : 0;
         <button class="btn btn-outline-info d-lg-none me-3" id="sidebarToggle" aria-label="Open sidebar">
           <i class="bi bi-list" style="font-size:1.7rem;"></i>
         </button>
-        <img src="public/vault-logo-new.png" alt="Vault Logo" class="logo me-3">
+        <img src="/vault-logo-new.png" alt="Vault Logo" class="logo me-3">
         <a href="/" class="back-link"><i class="bi bi-arrow-left"></i> Back to Home</a>
       </div>
       <div><!-- Wallet connection placeholder -->

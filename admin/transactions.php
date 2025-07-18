@@ -4,7 +4,7 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== tru
   header('Location: login.php');
   exit;
 }
-$pdo = new PDO('mysql:host=localhost;dbname=vault', 'root', '');
+$pdo = new PDO('mysql:host=localhost;dbname=vault_db', 'root', '');
 $alert = '';
 // Handle approve/reject actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['tx_id'])) {

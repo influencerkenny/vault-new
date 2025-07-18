@@ -2,7 +2,7 @@
 session_start();
 
 // Database connection (adjust as needed)
-$pdo = new PDO('mysql:host=localhost;dbname=vault', 'root', '');
+$pdo = new PDO('mysql:host=localhost;dbname=vault_db', 'root', '');
 
 $fields = [
   'email' => ''
@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       // Send email (template)
       $resetLink = (isset($_SERVER['HTTPS']) ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . "/reset-password.php?token=$token";
       $subject = "Vault Password Reset";
-      $logoUrl = (isset($_SERVER['HTTPS']) ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . '/public/vault-logo.png';
+      $logoUrl = (isset($_SERVER['HTTPS']) ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . '/vault-logo-new.png';
       $message = '<!DOCTYPE html>
       <html lang="en">
       <head><meta charset="UTF-8"><title>Vault Password Reset</title></head>
@@ -173,7 +173,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <div class="col-12 col-md-8 col-lg-6 col-xl-5">
         <div class="card p-4 p-md-5 rounded-4">
           <div class="text-center mb-4">
-            <img src="/public/vault-logo.png" alt="Vault Logo" class="logo-img" loading="lazy">
+            <img src="/vault-logo-new.png" alt="Vault Logo" class="logo-img" loading="lazy">
             <h1 class="h3 fw-bold mb-2 text-white">Forgot Password</h1>
             <p class="text-secondary">Enter your email to reset your password</p>
           </div>

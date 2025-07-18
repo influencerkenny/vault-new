@@ -9,7 +9,7 @@ if (isset($_SESSION['admin_just_logged_in']) && $_SESSION['admin_just_logged_in'
   $showCongrats = true;
   unset($_SESSION['admin_just_logged_in']);
 }
-$pdo = new PDO('mysql:host=localhost;dbname=vault', 'root', '');
+$pdo = new PDO('mysql:host=localhost;dbname=vault_db', 'root', '');
 // Total users
 $totalUsers = $pdo->query('SELECT COUNT(*) FROM users')->fetchColumn();
 // Total completed deposits
@@ -18,6 +18,9 @@ $totalDeposits = $pdo->query("SELECT SUM(amount) FROM transactions WHERE type='d
 $totalWithdrawals = $pdo->query("SELECT SUM(amount) FROM transactions WHERE type='withdrawal' AND status='completed'")->fetchColumn();
 // Pending transactions
 $pendingTx = $pdo->query("SELECT COUNT(*) FROM transactions WHERE status='pending'")->fetchColumn();
+
+// Pending deposits count for notification
+$pendingDeposits = $pdo->query("SELECT COUNT(*) FROM transactions WHERE type='deposit' AND status='pending'")->fetchColumn();
 
 // Fetch deposits over last 14 days
 $depositLabels = [];
@@ -71,6 +74,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_email_config']
   ];
   file_put_contents($email_config_file, '<?php return ' . var_export($email_config, true) . ';');
   $email_success = true;
+}
+
+function sol_display($amount) {
+  return '<span class="sol-value">' . number_format($amount, 2) . ' SOL</span>';
+}
+function usdt_placeholder($amount) {
+  // Placeholder span for JS to fill in
+  return '<span class="usdt-convert" data-sol="' . htmlspecialchars($amount, ENT_QUOTES) . '">≈ $--.-- USDT</span>';
 }
 ?>
 <!DOCTYPE html>
@@ -134,6 +145,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_email_config']
     .sidebar .logout-btn:hover {
       background: #7f1d1d22;
       color: #f87171;
+    }
+    .sidebar .nav-link .badge {
+      font-size: 0.65rem !important;
+      padding: 0.25rem 0.4rem;
+      border-radius: 0.5rem;
+      font-weight: 600;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+    .sidebar .nav-link:hover .badge {
+      animation: none;
     }
     .main-content {
       margin-left: 260px;
@@ -291,18 +317,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_email_config']
       font-size: 1.1rem;
       letter-spacing: 0.01em;
     }
+    .usdt-convert {
+      display: block;
+      font-size: 0.6em;
+      color: #94a3b8;
+      margin-top: 0.1em;
+    }
+    td .usdt-convert, td .sol-value {
+      font-size: 0.6em;
+    }
+    .sol-value {
+      font-size: 0.65em;
+      color: #38bdf8;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
 <div class="sidebar" id="sidebar" aria-label="Admin sidebar navigation">
   <div class="logo mb-4">
-    <img src="/public/vault-logo.png" alt="Vault Logo" style="height:40px;">
+    <img src="/vault-logo-new.png" alt="Vault Logo" style="height:40px;">
     <div style="font-weight:700;font-size:1.3rem;color:#38bdf8;">Vault Admin</div>
   </div>
   <a href="dashboard.php" class="nav-link<?=basename($_SERVER['PHP_SELF'])==='dashboard.php'?' active':''?>"><i class="bi bi-house"></i> Dashboard</a>
   <a href="users.php" class="nav-link<?=basename($_SERVER['PHP_SELF'])==='users.php'?' active':''?>"><i class="bi bi-people"></i> Users</a>
   <a href="plans.php" class="nav-link<?=basename($_SERVER['PHP_SELF'])==='plans.php'?' active':''?>"><i class="bi bi-layers"></i> Plans</a>
-  <a href="deposits.php" class="nav-link<?=basename($_SERVER['PHP_SELF'])==='deposits.php'?' active':''?>"><i class="bi bi-download"></i> Deposits</a>
+  <a href="deposits.php" class="nav-link<?=basename($_SERVER['PHP_SELF'])==='deposits.php'?' active':''?> position-relative">
+    <i class="bi bi-download"></i> Deposits
+    <?php if($pendingDeposits > 0): ?>
+      <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:0.7rem; margin-left:0.5rem;">
+        <?=$pendingDeposits > 9 ? '9+' : $pendingDeposits?>
+      </span>
+    <?php endif; ?>
+  </a>
   <a href="withdrawals.php" class="nav-link<?=basename($_SERVER['PHP_SELF'])==='withdrawals.php'?' active':''?>"><i class="bi bi-upload"></i> Withdrawals</a>
   <a href="transactions.php" class="nav-link<?=basename($_SERVER['PHP_SELF'])==='transactions.php'?' active':''?>"><i class="bi bi-list"></i> Transactions</a>
   <a href="referrals.php" class="nav-link<?=basename($_SERVER['PHP_SELF'])==='referrals.php'?' active':''?>"><i class="bi bi-people"></i> Referrals</a>
@@ -314,7 +361,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_email_config']
 <div class="main-content">
   <div class="dashboard-header">
     <div class="logo d-flex align-items-center">
-      <img src="/public/vault-logo.png" alt="Vault Logo" class="me-2" style="height:36px;">
+      <img src="/vault-logo-new.png" alt="Vault Logo" class="me-2" style="height:36px;">
       <span style="font-weight:700;font-size:1.2rem;color:#38bdf8;">Vault Admin</span>
     </div>
     <div class="profile-dropdown" id="profileDropdown">
@@ -337,12 +384,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_email_config']
     <div class="dashboard-widget deposits">
       <div class="widget-icon"><i class="bi bi-download"></i></div>
       <div class="widget-title">Total Deposits</div>
-      <div class="widget-value">$<?=number_format($totalDeposits ?: 0,2)?></div>
+      <div class="widget-value"><?=sol_display($totalDeposits)?><?=usdt_placeholder($totalDeposits)?></div>
     </div>
     <div class="dashboard-widget withdrawals">
       <div class="widget-icon"><i class="bi bi-upload"></i></div>
       <div class="widget-title">Total Withdrawals</div>
-      <div class="widget-value">$<?=number_format($totalWithdrawals ?: 0,2)?></div>
+      <div class="widget-value"><?=sol_display($totalWithdrawals)?><?=usdt_placeholder($totalWithdrawals)?></div>
     </div>
     <div class="dashboard-widget pending">
       <div class="widget-icon"><i class="bi bi-clock-history"></i></div>
@@ -392,6 +439,37 @@ if (profileBtn) {
     }
   });
 }
+
+// Auto-refresh pending deposits notification
+function updatePendingDepositsCount() {
+  fetch('get_pending_deposits_count.php')
+    .then(response => response.json())
+    .then(data => {
+      const depositsLink = document.querySelector('a[href="deposits.php"]');
+      const existingBadge = depositsLink.querySelector('.badge');
+      
+      if (data.pending_count > 0) {
+        const badgeText = data.pending_count > 9 ? '9+' : data.pending_count;
+        
+        if (existingBadge) {
+          existingBadge.textContent = badgeText;
+        } else {
+          const newBadge = document.createElement('span');
+          newBadge.className = 'position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger';
+          newBadge.style.fontSize = '0.7rem';
+          newBadge.style.marginLeft = '0.5rem';
+          newBadge.textContent = badgeText;
+          depositsLink.appendChild(newBadge);
+        }
+      } else if (existingBadge) {
+        existingBadge.remove();
+      }
+    })
+    .catch(error => console.error('Error updating pending deposits count:', error));
+}
+
+// Update count every 30 seconds
+setInterval(updatePendingDepositsCount, 30000);
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
@@ -558,6 +636,24 @@ new Chart(document.getElementById('transactionsChart'), {
     animation: { animateRotate: true, animateScale: true }
   }
 });
+
+// Fetch SOL price from CoinGecko and update all .usdt-convert fields
+function updateSolToUsdt() {
+  fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usdt')
+    .then(res => res.json())
+    .then(data => {
+      const rate = data.solana.usdt;
+      document.querySelectorAll('.usdt-convert').forEach(function(span) {
+        const sol = parseFloat(span.getAttribute('data-sol'));
+        if (!isNaN(sol)) {
+          const usdt = sol * rate;
+          span.textContent = `≈ $${usdt.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})} USDT`;
+        }
+      });
+    });
+}
+updateSolToUsdt();
+setInterval(updateSolToUsdt, 300000);
 </script>
 </body>
 </html> 

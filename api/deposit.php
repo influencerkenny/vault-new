@@ -19,7 +19,7 @@ if (!$wallet || !$address) {
   exit;
 }
 try {
-  $pdo = new PDO('mysql:host=localhost;dbname=vault', 'root', '');
+  $pdo = new PDO('mysql:host=localhost;dbname=vault_db', 'root', '');
   $stmt = $pdo->prepare('INSERT INTO transactions (user_id, type, amount, status, description, created_at) VALUES (?, ?, ?, ?, ?, NOW())');
   $desc = "Deposit via $wallet to $address" . ($notes ? (". Notes: $notes") : '');
   $stmt->execute([$user_id, 'deposit', $amount, 'pending', $desc]);

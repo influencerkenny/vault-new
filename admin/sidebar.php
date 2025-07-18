@@ -18,7 +18,7 @@
 </style>
 <div class="sidebar" id="sidebar" aria-label="Admin sidebar navigation" style="background: rgba(10,16,30,0.95); border-right: 1px solid #1e293b; min-height: 100vh; width: 260px; position: fixed; top: 0; left: 0; z-index: 100; padding: 2rem 1.5rem 1.5rem 1.5rem; display: flex; flex-direction: column; transition: left 0.3s;">
   <div class="logo mb-4" style="margin-bottom: 2rem; text-align: center;">
-    <img src="/public/vault-logo.png" alt="Vault Logo" style="height:40px;">
+    <img src="/vault-logo-new.png" alt="Vault Logo" style="height:40px;">
     <div style="font-weight:700;font-size:1.3rem;color:#38bdf8;">Vault Admin</div>
   </div>
   <a href="dashboard.php" class="nav-link<?=basename($_SERVER['PHP_SELF'])==='dashboard.php'?' active':''?>" style="color: #cbd5e1; font-weight: 500; border-radius: 0.75rem; padding: 0.75rem 1rem; margin-bottom: 0.25rem; display: flex; align-items: center; gap: 0.75rem; transition: background 0.2s, color 0.2s; position: relative;<?=basename($_SERVER['PHP_SELF'])==='dashboard.php'?' background: linear-gradient(90deg, #2563eb22 0%, #0ea5e922 100%); color: #38bdf8; box-shadow: 0 2px 8px 0 rgba(59,130,246,0.08);':''?>"><i class="bi bi-house"></i> Dashboard</a>

@@ -19,7 +19,7 @@ if (!$wallet || !$address) {
   exit;
 }
 try {
-  $pdo = new PDO('mysql:host=localhost;dbname=vault', 'root', '');
+  $pdo = new PDO('mysql:host=localhost;dbname=vault_db', 'root', '');
   // Check available balance
   $stmt = $pdo->prepare('SELECT available_balance FROM user_balances WHERE user_id = ?');
   $stmt->execute([$user_id]);

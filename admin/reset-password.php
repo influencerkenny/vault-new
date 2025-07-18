@@ -1,6 +1,6 @@
 <?php
 session_start();
-$pdo = new PDO('mysql:host=localhost;dbname=vault', 'root', '');
+$pdo = new PDO('mysql:host=localhost;dbname=vault_db', 'root', '');
 $fields = ['token' => '', 'password' => '', 'confirm_password' => ''];
 $errors = [];
 $success = false;
@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <div class="col-12 col-md-8 col-lg-6 col-xl-5">
         <div class="card p-4 p-md-5 rounded-4">
           <div class="text-center mb-4">
-            <img src="/public/vault-logo.png" alt="Vault Logo" class="logo-img" loading="lazy">
+            <img src="/vault-logo-new.png" alt="Vault Logo" class="logo-img" loading="lazy">
             <h1 class="h4 fw-bold mb-2 text-white">Reset Admin Password</h1>
             <p class="text-secondary">Enter your reset token and new password.</p>
           </div>

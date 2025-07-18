@@ -7,7 +7,7 @@
     <button id="sidebarToggle" aria-label="Toggle sidebar" style="display:none;background:none;border:none;margin-right:12px;font-size:2rem;color:#38bdf8;cursor:pointer;">
       <i class="bi bi-list"></i>
     </button>
-    <img src="/public/vault-logo.png" alt="Vault Logo" class="me-2" style="height:36px;">
+    <img src="/vault-logo-new.png" alt="Vault Logo" class="me-2" style="height:36px;">
     <span style="font-weight:700;font-size:1.2rem;color:#38bdf8;">Vault Admin</span>
   </div>
   <div class="profile-dropdown" id="profileDropdown">

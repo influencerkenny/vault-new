@@ -3,7 +3,7 @@
 session_start();
 
 // Database connection (adjust as needed)
-$pdo = new PDO('mysql:host=localhost;dbname=vault', 'root', '');
+$pdo = new PDO('mysql:host=localhost;dbname=vault_db', 'root', '');
 
 // Country list (ISO 3166-1)
 $countries = [
@@ -150,7 +150,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <div class="col-12 col-md-8 col-lg-6 col-xl-5">
         <div class="card p-4 p-md-5 rounded-4">
           <div class="text-center mb-4">
-            <img src="/public/vault-logo.png" alt="Vault Logo" class="logo-img" loading="lazy">
+            <img src="/vault-logo-new.png" alt="Vault Logo" class="logo-img" loading="lazy">
             <h1 class="h3 fw-bold mb-2 text-white">Create Account</h1>
             <p class="text-secondary">Join Vault and start earning today</p>
           </div>
