@@ -89,26 +89,83 @@ $plan_history = $stmt->fetchAll(PDO::FETCH_ASSOC);
     .modal-header { border-bottom: 1px solid #2563eb33; }
     .modal-footer { border-top: 1px solid #2563eb33; }
     .dashboard-content-wrapper { max-width: 900px; width: 100%; margin: 0 auto; padding: 0 1rem; }
+    @media (max-width: 991px) {
+      .main-content { margin-left: 0 !important; }
+      .dashboard-content-wrapper { max-width: 100vw; margin: 0; padding: 0 0.3rem; }
+    }
     @media (max-width: 767px) {
-      .dashboard-content-wrapper { padding: 0 0.3rem; }
+      .dashboard-content-wrapper { padding: 0 0.1rem; }
       .plans-grid { grid-template-columns: 1fr; gap: 0.7rem; }
       .plan-card { padding: 1rem 0.5rem 0.8rem 0.5rem; min-height: 150px; font-size: 0.97rem; }
       .plan-card .plan-title { font-size: 1.08rem; }
       .plan-card .plan-desc { font-size: 0.98rem; }
       .plan-card .plan-meta { font-size: 0.97rem; }
+      .plan-card-mobile, .history-card-mobile { width: 100%; box-sizing: border-box; }
     }
     @media (max-width: 575px) {
-      .dashboard-content-wrapper { padding: 0 0.1rem; }
+      .dashboard-content-wrapper { padding: 0 0.05rem; }
       .plan-card { padding: 0.5rem 0.1rem 0.5rem 0.1rem; min-height: 100px; font-size: 0.91rem; }
       .plan-card .plan-title { font-size: 0.98rem; }
       .plan-card .plan-desc { font-size: 0.91rem; }
       .plan-card .plan-meta { font-size: 0.91rem; }
+      .plan-card-mobile, .history-card-mobile { padding: 0.7rem 0.1rem 0.7rem 0.1rem; font-size: 0.91rem; width: 100%; }
     }
     .table-responsive { overflow-x: auto; }
     .table { min-width: 600px; }
     @media (max-width: 575px) {
       .table { font-size: 0.93rem; min-width: 480px; }
       .table th, .table td { padding: 0.4rem 0.5rem; }
+    }
+    /* Mobile plans card/list view */
+    .plans-mobile-list { display: none; }
+    .plan-card-mobile {
+      background: linear-gradient(135deg, #2563eb22 0%, #0ea5e922 100%);
+      border: 1px solid #2563eb33;
+      border-radius: 1.25rem;
+      box-shadow: 0 6px 32px 0 rgba(37,99,235,0.10), 0 1.5px 8px 0 rgba(31,41,55,0.10);
+      color: #e5e7eb;
+      padding: 1.1rem 1rem 1rem 1rem;
+      margin-bottom: 1.2rem;
+      font-size: 1.01rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+    .plan-card-header { font-size: 1.13rem; font-weight: 700; color: #38bdf8; margin-bottom: 2px; }
+    .plan-card-title { font-size: 1.08rem; }
+    .plan-card-desc { font-size: 0.97rem; color: #a1a1aa; margin-bottom: 2px; }
+    .plan-card-row { font-size: 0.97rem; color: #e5e7eb; margin-bottom: 2px; }
+    .plan-card-actions { margin-top: 8px; }
+    /* Mobile history card/list view */
+    .history-mobile-list { display: none; }
+    .history-card-mobile {
+      background: #181f2a;
+      border: 1px solid #2563eb33;
+      border-radius: 1.1rem;
+      box-shadow: 0 2px 12px #0003;
+      color: #e5e7eb;
+      padding: 1rem 0.8rem 0.8rem 0.8rem;
+      margin-bottom: 1.1rem;
+      font-size: 0.99rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+    .history-card-header { font-size: 1.05rem; font-weight: 700; color: #38bdf8; display: flex; align-items: center; margin-bottom: 2px; }
+    .history-card-title { font-size: 1.01rem; }
+    .history-card-row { font-size: 0.97rem; color: #e5e7eb; margin-bottom: 2px; }
+    /* Responsive: show mobile list, hide grid/table on small screens */
+    @media (max-width: 767px) {
+      .plans-grid { display: none !important; }
+      .plans-mobile-list { display: block !important; }
+      .table-responsive { display: none !important; }
+      .history-mobile-list { display: block !important; }
+    }
+    @media (max-width: 575px) {
+      .plan-card-mobile, .history-card-mobile { padding: 0.7rem 0.3rem 0.7rem 0.3rem; font-size: 0.93rem; }
+      .plan-card-header, .history-card-header { font-size: 0.98rem; }
+      .plan-card-title, .history-card-title { font-size: 0.95rem; }
+      .plan-card-row, .history-card-row { font-size: 0.93rem; }
     }
   </style>
 </head>
@@ -170,7 +227,8 @@ $plan_history = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <h2 class="mb-4 text-info fw-bold">Staking Plans</h2>
         <?php if ($success): ?><div class="alert alert-success" id="stakeSuccess"><?=$success?></div><?php endif; ?>
         <?php if ($error): ?><div class="alert alert-danger" id="stakeError"><?=$error?></div><?php endif; ?>
-        <div class="plans-grid mb-5">
+        <!-- Desktop Plans Grid -->
+        <div class="plans-grid mb-5 d-none d-md-grid">
           <?php foreach ($plans as $plan): ?>
             <div class="plan-card d-flex flex-column mb-3">
               <div>
@@ -189,9 +247,30 @@ $plan_history = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
           <?php endforeach; ?>
         </div>
+        <!-- Mobile Plans List -->
+        <div class="plans-mobile-list d-md-none mb-5">
+          <?php foreach ($plans as $plan): ?>
+            <div class="plan-card-mobile mb-3">
+              <div class="plan-card-header">
+                <span class="plan-card-title"><?= htmlspecialchars($plan['name']) ?></span>
+              </div>
+              <div class="plan-card-desc mb-1"><?= htmlspecialchars($plan['description']) ?></div>
+              <div class="plan-card-row"><b>Daily ROI:</b> <?= number_format($plan['daily_roi'], 2) ?>%</div>
+              <div class="plan-card-row"><b>Monthly ROI:</b> <?= number_format($plan['monthly_roi'], 2) ?>%</div>
+              <div class="plan-card-row"><b>Lock-in:</b> <?= $plan['lock_in_duration'] ?> days</div>
+              <div class="plan-card-row"><b>Min:</b> $<?= number_format($plan['min_investment'], 2) ?> <b>Max:</b> $<?= number_format($plan['max_investment'], 2) ?></div>
+              <?php if ($plan['bonus'] > 0): ?><div class="plan-card-row"><b>Bonus:</b> $<?= number_format($plan['bonus'], 2) ?></div><?php endif; ?>
+              <?php if ($plan['referral_reward'] > 0): ?><div class="plan-card-row"><b>Referral Reward:</b> $<?= number_format($plan['referral_reward'], 2) ?></div><?php endif; ?>
+              <div class="plan-card-actions mt-2">
+                <button class="btn btn-info w-100" data-bs-toggle="modal" data-bs-target="#stakeModal" data-plan-id="<?=$plan['id']?>" data-plan-name="<?=htmlspecialchars($plan['name'])?>" data-min="<?=$plan['min_investment']?>" data-max="<?=$plan['max_investment']?>" data-daily-roi="<?=$plan['daily_roi']?>" data-lockin="<?=$plan['lock_in_duration']?>">Stake Now</button>
+              </div>
+            </div>
+          <?php endforeach; ?>
+        </div>
         <!-- Plan History -->
         <h3 class="mb-3 text-info fw-bold">My Staking History</h3>
-        <div class="table-responsive mb-5" style="border-radius: 1rem; overflow: hidden; background: #111827cc;">
+        <!-- Desktop Table -->
+        <div class="table-responsive mb-5 d-none d-md-block" style="border-radius: 1rem; overflow: hidden; background: #111827cc;">
           <table class="table table-dark table-striped table-hover align-middle">
             <thead>
               <tr>
@@ -217,6 +296,22 @@ $plan_history = $stmt->fetchAll(PDO::FETCH_ASSOC);
               <?php if (!count($plan_history)): ?><tr><td colspan="6" class="text-center text-muted">No staking history yet.</td></tr><?php endif; ?>
             </tbody>
           </table>
+        </div>
+        <!-- Mobile History List -->
+        <div class="history-mobile-list d-md-none mb-5">
+          <?php foreach ($plan_history as $inv): ?>
+            <div class="history-card-mobile mb-3">
+              <div class="history-card-header">
+                <span class="history-card-title"><?= htmlspecialchars($inv['plan_name']) ?></span>
+                <span class="badge bg-<?=($inv['status']==='active'?'success':($inv['status']==='completed'?'secondary':'danger'))?> text-uppercase ms-2" style="font-size:0.85em;"> <?=$inv['status']?> </span>
+              </div>
+              <div class="history-card-row"><b>Amount:</b> $<?= number_format($inv['amount'], 2) ?></div>
+              <div class="history-card-row"><b>Start:</b> <?= date('M d, Y', strtotime($inv['start_date'])) ?></div>
+              <div class="history-card-row"><b>End:</b> <?= date('M d, Y', strtotime($inv['end_date'])) ?></div>
+              <div class="history-card-row"><b>Total Earned:</b> $<?= number_format($inv['total_earned'], 2) ?></div>
+            </div>
+          <?php endforeach; ?>
+          <?php if (!count($plan_history)): ?><div class="text-center text-muted">No staking history yet.</div><?php endif; ?>
         </div>
       </div>
       <!-- Stake Modal -->
