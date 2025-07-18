@@ -1,0 +1,27 @@
+/* Responsive Layout Snippet for Vault Project
+   Use this CSS on any page to make main content and card layouts mobile friendly.
+   - Copy or import this file into your page's <style> section or main stylesheet.
+   - Adjust class names if your wrappers/cards differ.
+*/
+
+/* Desktop default */
+.main-content { margin-left: 260px; min-height: 100vh; background: #0f172a; position: relative; z-index: 1; display: flex; flex-direction: column; }
+.dashboard-content-wrapper { max-width: 900px; width: 100%; margin: 0 auto; padding: 0 1rem; }
+
+/* Tablet and below: remove sidebar margin, use full width */
+@media (max-width: 991px) {
+  .main-content { margin-left: 0 !important; }
+  .dashboard-content-wrapper { max-width: 100vw; margin: 0; padding: 0 0.3rem; }
+}
+
+/* Mobile: reduce padding further, ensure cards are full width */
+@media (max-width: 767px) {
+  .dashboard-content-wrapper { padding: 0 0.1rem; }
+  .plan-card-mobile, .history-card-mobile { width: 100%; box-sizing: border-box; }
+}
+
+/* Small mobile: minimal padding, smaller font */
+@media (max-width: 575px) {
+  .dashboard-content-wrapper { padding: 0 0.05rem; }
+  .plan-card-mobile, .history-card-mobile { padding: 0.7rem 0.1rem 0.7rem 0.1rem; font-size: 0.91rem; width: 100%; }
+} 

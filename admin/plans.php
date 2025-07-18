@@ -705,5 +705,14 @@ function handleDeleteForms() {
 }
 handleDeleteForms();
 </script>
+<!-- Mobile Sidebar Overlay -->
+<div id="sidebarOverlay" class="sidebar-mobile-overlay"></div>
+<!-- Sidebar -->
+<!-- The sidebar is likely included via include 'sidebar.php'; -->
+<!-- Hamburger for mobile -->
+<button class="btn btn-outline-info d-lg-none me-3" id="sidebarToggle" aria-label="Open sidebar">
+  <i class="bi bi-list" style="font-size:1.7rem;"></i>
+</button>
+<script src="/public/sidebar-toggle.js"></script>
 </body>
 </html> 
