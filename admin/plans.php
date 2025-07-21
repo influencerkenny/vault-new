@@ -152,14 +152,12 @@ if (
             </span>
           </div>
           <div class="plan-card-desc"><?= htmlspecialchars($plan['description']) ?></div>
-          <div class="plan-card-row">
-            <span><i class="bi bi-graph-up"></i> <?= display_roi($plan) ?></span>
-            <span><i class="bi bi-lock"></i> Lock-in: <b><?= $plan['lock_in_duration'] ?>d</b></span>
-          </div>
-          <div class="plan-card-row">
-            <span><i class="bi bi-cash-coin"></i> Min: <b><?= $plan['min_investment'] ?></b></span>
-            <span><i class="bi bi-cash-coin"></i> Max: <b><?= $plan['max_investment'] ?></b></span>
-          </div>
+          <ul style="list-style:none;padding:0;margin:0;">
+            <li><b>Minimum Stake:</b> <span style="float:right; color:#38bdf8; font-weight:600;">$<?= number_format($plan['min_investment'], 2) ?></span></li>
+            <li><b>Maximum Stake:</b> <span style="float:right; color:#38bdf8; font-weight:600;">$<?= number_format($plan['max_investment'], 2) ?></span></li>
+            <li><b>ROI:</b> <span style="float:right; color:#38bdf8; font-weight:600;"><?= display_roi($plan) ?></span></li>
+            <li><b>Lock-in:</b> <span style="float:right; color:#38bdf8; font-weight:600;"><?= $plan['lock_in_duration'] ?> days</span></li>
+          </ul>
           <div class="plan-card-actions" style="margin-top:10px;">
             <button class="icon-btn icon-btn-edit" title="Edit" onclick='openEditModal(<?= json_encode($plan) ?>)'><i class="bi bi-pencil"></i></button>
             <form method="post" style="display:inline;" onsubmit="return confirm('Delete this plan?');">
@@ -598,8 +596,7 @@ if (
           <tr>
             <th>Name</th>
             <th>Description</th>
-            <th class="text-end">Daily ROI (%)</th>
-            <th class="text-end">Monthly ROI (%)</th>
+            <th class="text-end">ROI</th>
             <th class="text-end">Lock-in (days)</th>
             <th class="text-end">Min Invest</th>
             <th class="text-end">Max Invest</th>
@@ -608,11 +605,11 @@ if (
           </tr>
         </thead>
         <tbody>
-          <?php foreach ($plans as $plan): ?>
+          <?php foreach (
+    $plans as $plan): ?>
           <tr>
             <td><?= htmlspecialchars($plan['name']) ?></td>
             <td><?= htmlspecialchars($plan['description']) ?></td>
-            <td class="text-end"><?= display_roi($plan) ?></td>
             <td class="text-end"><?= display_roi($plan) ?></td>
             <td class="text-end"><?= $plan['lock_in_duration'] ?></td>
             <td class="text-end"><?= number_format($plan['min_investment'], 2) ?></td>
@@ -656,8 +653,7 @@ if (
           <ul style="list-style:none;padding:0;margin:0;">
             <li><b>Minimum Stake:</b> <span style="float:right; color:#38bdf8; font-weight:600;">$<?= number_format($plan['min_investment'], 2) ?></span></li>
             <li><b>Maximum Stake:</b> <span style="float:right; color:#38bdf8; font-weight:600;">$<?= number_format($plan['max_investment'], 2) ?></span></li>
-            <li><b>Daily ROI:</b> <span style="float:right; color:#38bdf8; font-weight:600;"><?= display_roi($plan) ?></span></li>
-            <li><b>Monthly ROI:</b> <span style="float:right; color:#38bdf8; font-weight:600;"><?= display_roi($plan) ?></span></li>
+            <li><b>ROI:</b> <span style="float:right; color:#38bdf8; font-weight:600;"><?= display_roi($plan) ?></span></li>
             <li><b>Lock-in:</b> <span style="float:right; color:#38bdf8; font-weight:600;"><?= $plan['lock_in_duration'] ?> days</span></li>
           </ul>
           <div class="plan-card-actions" style="margin-top:10px;">
@@ -813,6 +809,7 @@ function openAddModal() {
     document.getElementById('planId').value = '';
     document.getElementById('planRoiType').value = 'daily';
     document.getElementById('planRoiMode').value = 'percent';
+    document.getElementById('planRoiValue').value = '';
     document.getElementById('planModal').classList.add('active');
 }
 window.openAddModal = openAddModal;

@@ -7,6 +7,11 @@ if (!isset($_SESSION['user_id'])) {
 $pdo = new PDO('mysql:host=localhost;dbname=vault_db', 'root', '');
 $user_id = $_SESSION['user_id'];
 $success = $error = '';
+// Fetch user available balance for modal display
+$stmt = $pdo->prepare('SELECT available_balance FROM user_balances WHERE user_id = ?');
+$stmt->execute([$user_id]);
+$user_balance = $stmt->fetchColumn();
+if ($user_balance === false) $user_balance = 0.00;
 // Handle staking (classic POST or AJAX)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['stake_plan_id'])) {
   $plan_id = (int)$_POST['stake_plan_id'];
@@ -58,6 +63,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['stake_plan_id'])) {
     exit;
   }
 }
+// Helper function to display ROI label and value
+function plan_roi_label($plan) {
+  $type = isset($plan['roi_type']) ? ucfirst($plan['roi_type']) : 'Daily';
+  $mode = isset($plan['roi_mode']) && $plan['roi_mode'] === 'fixed' ? '$' : '%';
+  $value = isset($plan['roi_value']) ? $plan['roi_value'] : 0;
+  return $type . ' ROI: ' . ($mode === '$' ? '$' . number_format($value,2) : number_format($value,2) . '%');
+}
 // Fetch user info
 $stmt = $pdo->prepare('SELECT first_name, last_name, email FROM users WHERE id = ?');
 $stmt->execute([$user_id]);
@@ -83,19 +95,19 @@ $sidebarLinks = [
 ];
 // Fetch user available balance
 // Fetch all active plans
-$plans = $pdo->query('SELECT id, name, description, min_investment, max_investment, daily_roi, monthly_roi, lock_in_duration FROM plans WHERE status="active" ORDER BY created_at DESC')->fetchAll(PDO::FETCH_ASSOC);
-// Fetch user plan history with pagination
+$plans = $pdo->query('SELECT id, name, description, min_investment, max_investment, roi_type, roi_mode, roi_value, lock_in_duration FROM plans WHERE status="active" ORDER BY created_at DESC')->fetchAll(PDO::FETCH_ASSOC);
+// Fetch user plan history with pagination (now using user_stakes)
 $limit = 10;
 $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
 $offset = ($page - 1) * $limit;
-$stmt = $pdo->prepare('SELECT i.id, i.plan_id, i.amount, i.status, i.start_date, i.end_date, i.total_earned, p.name AS plan_name FROM investments i JOIN plans p ON i.plan_id = p.id WHERE i.user_id = ? ORDER BY i.start_date DESC LIMIT ? OFFSET ?');
+$stmt = $pdo->prepare('SELECT us.id, us.plan_id, us.amount, us.status, us.started_at, us.ended_at, us.interest_earned, p.name AS plan_name FROM user_stakes us JOIN plans p ON us.plan_id = p.id WHERE us.user_id = ? ORDER BY us.started_at DESC LIMIT ? OFFSET ?');
 $stmt->bindValue(1, $user_id, PDO::PARAM_INT);
 $stmt->bindValue(2, $limit, PDO::PARAM_INT);
 $stmt->bindValue(3, $offset, PDO::PARAM_INT);
 $stmt->execute();
 $plan_history = $stmt->fetchAll(PDO::FETCH_ASSOC);
 // Count total for pagination
-$stmt = $pdo->prepare('SELECT COUNT(*) FROM investments WHERE user_id = ?');
+$stmt = $pdo->prepare('SELECT COUNT(*) FROM user_stakes WHERE user_id = ?');
 $stmt->execute([$user_id]);
 $total_history = $stmt->fetchColumn();
 $total_pages = ceil($total_history / $limit);
@@ -342,11 +354,10 @@ $total_pages = ceil($total_history / $limit);
               <div class="plan-desc mb-2" style="color:#a1a1aa; font-size:1.01rem;"> <?=htmlspecialchars($plan['description'])?> </div>
               <div class="plan-attr-row"><span class="plan-attr-label">Minimum Stake:</span><span class="plan-attr-value">SOL <?=number_format($plan['min_investment'],2)?></span></div>
               <div class="plan-attr-row"><span class="plan-attr-label">Maximum Stake:</span><span class="plan-attr-value">SOL <?=number_format($plan['max_investment'],2)?></span></div>
-              <div class="plan-attr-row"><span class="plan-attr-label">Daily ROI:</span><span class="plan-attr-value">SOL <?=number_format($plan['daily_roi'],2)?>%</span></div>
-              <div class="plan-attr-row"><span class="plan-attr-label">Monthly ROI:</span><span class="plan-attr-value">SOL <?=number_format($plan['monthly_roi'],2)?>%</span></div>
+              <div class="plan-attr-row"><span class="plan-attr-label"><?=plan_roi_label($plan)?></span><span class="plan-attr-value"></span></div>
               <div class="plan-attr-row"><span class="plan-attr-label">Lock-in:</span><span class="plan-attr-value"><?=$plan['lock_in_duration']?> days</span></div>
               <div class="plan-footer mt-3">
-                <button class="btn btn-info w-100 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#stakeModal" data-plan-id="<?=$plan['id']?>" data-plan-name="<?=htmlspecialchars($plan['name'])?>" data-min="<?=$plan['min_investment']?>" data-max="<?=$plan['max_investment']?>" data-daily-roi="<?=$plan['daily_roi']?>" data-lockin="<?=$plan['lock_in_duration']?>">Stake Now</button>
+                <button class="btn btn-info w-100 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#stakeModal" data-plan-id="<?=$plan['id']?>" data-plan-name="<?=htmlspecialchars($plan['name'])?>" data-min="<?=$plan['min_investment']?>" data-max="<?=$plan['max_investment']?>" data-lockin="<?=$plan['lock_in_duration']?>">Stake Now</button>
               </div>
             </div>
           <?php endforeach; ?>
@@ -361,11 +372,10 @@ $total_pages = ceil($total_history / $limit);
               <div class="plan-card-desc mb-1" style="color:#a1a1aa; font-size:0.97rem;"> <?= htmlspecialchars($plan['description']) ?> </div>
               <div class="plan-attr-row"><span class="plan-attr-label">Minimum Stake:</span><span class="plan-attr-value">SOL <?=number_format($plan['min_investment'],2)?></span></div>
               <div class="plan-attr-row"><span class="plan-attr-label">Maximum Stake:</span><span class="plan-attr-value">SOL <?=number_format($plan['max_investment'],2)?></span></div>
-              <div class="plan-attr-row"><span class="plan-attr-label">Daily ROI:</span><span class="plan-attr-value">SOL <?=number_format($plan['daily_roi'],2)?>%</span></div>
-              <div class="plan-attr-row"><span class="plan-attr-label">Monthly ROI:</span><span class="plan-attr-value">SOL <?=number_format($plan['monthly_roi'],2)?>%</span></div>
+              <div class="plan-attr-row"><span class="plan-attr-label"><?=plan_roi_label($plan)?></span><span class="plan-attr-value"></span></div>
               <div class="plan-attr-row"><span class="plan-attr-label">Lock-in:</span><span class="plan-attr-value"><?=$plan['lock_in_duration']?> days</span></div>
               <div class="plan-card-actions mt-2">
-                <button class="btn btn-info w-100 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#stakeModal" data-plan-id="<?=$plan['id']?>" data-plan-name="<?=htmlspecialchars($plan['name'])?>" data-min="<?=$plan['min_investment']?>" data-max="<?=$plan['max_investment']?>" data-daily-roi="<?=$plan['daily_roi']?>" data-lockin="<?=$plan['lock_in_duration']?>">Stake Now</button>
+                <button class="btn btn-info w-100 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#stakeModal" data-plan-id="<?=$plan['id']?>" data-plan-name="<?=htmlspecialchars($plan['name'])?>" data-min="<?=$plan['min_investment']?>" data-max="<?=$plan['max_investment']?>" data-lockin="<?=$plan['lock_in_duration']?>">Stake Now</button>
               </div>
             </div>
           <?php endforeach; ?>
@@ -381,19 +391,20 @@ $total_pages = ceil($total_history / $limit);
                 <th>Amount</th>
                 <th>Status</th>
                 <th>Start</th>
-                <th>End</th>
-                <th>Total Earned</th>
+                <th>End Day</th>
+                <th>Interest Earned</th>
               </tr>
             </thead>
             <tbody>
-              <?php foreach ($plan_history as $inv): ?>
+              <?php foreach (
+                $plan_history as $inv): ?>
                 <tr>
                   <td><?=htmlspecialchars($inv['plan_name'])?></td>
                   <td>SOL <?=number_format($inv['amount'],2)?></td>
                   <td><span class="badge bg-<?=($inv['status']==='active'?'success':($inv['status']==='completed'?'secondary':'danger'))?> text-uppercase"><?=$inv['status']?></span></td>
-                  <td><?=date('M d, Y', strtotime($inv['start_date']))?></td>
-                  <td><?=date('M d, Y', strtotime($inv['end_date']))?></td>
-                  <td>SOL <?=number_format($inv['total_earned'],2)?></td>
+                  <td><?=date('M d, Y', strtotime($inv['started_at']))?></td>
+                  <td><?=$inv['ended_at'] ? date('M d, Y (l)', strtotime($inv['ended_at'])) : '-'?></td>
+                  <td>SOL <?=number_format($inv['interest_earned'],2)?></td>
                 </tr>
               <?php endforeach; ?>
               <?php if (!count($plan_history)): ?><tr><td colspan="6" class="text-center text-muted">No staking history yet.</td></tr><?php endif; ?>
@@ -414,9 +425,10 @@ $total_pages = ceil($total_history / $limit);
                 <span class="badge bg-<?=($inv['status']==='active'?'success':($inv['status']==='completed'?'secondary':'danger'))?> text-uppercase ms-2" style="font-size:0.85em;"> <?=$inv['status']?> </span>
               </div>
               <div class="history-card-row"><b>Amount:</b> SOL <?= number_format($inv['amount'], 2) ?></div>
-              <div class="history-card-row"><b>Start:</b> <?= date('M d, Y', strtotime($inv['start_date'])) ?></div>
-              <div class="history-card-row"><b>End:</b> <?= date('M d, Y', strtotime($inv['end_date'])) ?></div>
-              <div class="history-card-row"><b>Total Earned:</b> SOL <?= number_format($inv['total_earned'], 2) ?></div>
+              <div class="history-card-row"><b>Start:</b> <?= date('M d, Y', strtotime($inv['started_at'])) ?></div>
+              <div class="history-card-row"><b>End:</b> <?= $inv['ended_at'] ? date('M d, Y', strtotime($inv['ended_at'])) : '-' ?></div>
+              <div class="history-card-row"><b>End Day:</b> <?= $inv['ended_at'] ? date('M d, Y (l)', strtotime($inv['ended_at'])) : '-' ?></div>
+              <div class="history-card-row"><b>Interest Earned:</b> SOL <?= number_format($inv['interest_earned'], 2) ?></div>
             </div>
           <?php endforeach; ?>
           <?php if (!count($plan_history)): ?><div class="text-center text-muted">No staking history yet.</div><?php endif; ?>
@@ -427,44 +439,54 @@ $total_pages = ceil($total_history / $limit);
           <?php endif; ?>
         </div>
       </div>
-      <!-- Stake Modal -->
-      <div class="modal fade" id="stakeModal" tabindex="-1" aria-labelledby="stakeModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title" id="stakeModalLabel">Stake in Plan</h5>
-              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="stakeForm" method="post" autocomplete="off">
-              <div class="modal-body">
-                <input type="hidden" name="stake_plan_id" id="stake_plan_id">
-                <div class="mb-3">
-                  <label for="stake_plan_name" class="form-label">Plan</label>
-                  <input type="text" class="form-control" id="stake_plan_name" readonly>
-                </div>
-                <div class="mb-3">
-                  <label for="stake_amount" class="form-label">Amount</label>
-                  <input type="number" class="form-control" id="stake_amount" name="stake_amount" min="0" step="0.01" required>
-                  <div class="form-text" id="stakeRange"></div>
-                  <div class="form-text text-warning">Available Balance: SOL <?=number_format($user_balance,2)?></div>
-                  <div class="form-text text-info" id="expectedReturns"></div>
-                </div>
-              </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="submit" class="btn btn-primary">Stake</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
     </main>
     <footer class="dashboard-footer">
       &copy; <?=date('Y')?> Vault. All rights reserved.
     </footer>
   </div>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" defer></script>
-  <script defer>
+<!-- Stake Modal (Redesigned, with plan select) -->
+<div class="modal fade" id="stakeModal" tabindex="-1" aria-labelledby="stakeModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg" style="border-radius: 1.5rem; background: linear-gradient(135deg, #181f2a 80%, #232b3b 100%);">
+      <form id="stakeForm" method="post" autocomplete="off">
+        <div class="modal-header border-0 pb-0" style="background: none;">
+          <h4 class="modal-title fw-bold text-info" id="stakeModalLabel">Stake in Plan</h4>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body pt-2">
+          <div class="mb-3">
+            <label for="stake_plan_id" class="form-label fw-semibold">Select Plan</label>
+            <select class="form-select bg-dark text-info border-0 rounded-3" id="stake_plan_id" name="stake_plan_id" required>
+              <option value="" disabled selected>Select a plan</option>
+              <?php foreach ($plans as $plan): ?>
+                <option value="<?=$plan['id']?>" data-min="<?=$plan['min_investment']?>" data-max="<?=$plan['max_investment']?>" data-lockin="<?=$plan['lock_in_duration']?>">
+                  <?=htmlspecialchars($plan['name'])?> (Min: <?=number_format($plan['min_investment'],2)?>, Max: <?=number_format($plan['max_investment'],2)?>)
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="stake_amount" class="form-label fw-semibold">Amount to Stake</label>
+            <div class="input-group">
+              <input type="number" class="form-control bg-dark text-white border-0 rounded-start-3" id="stake_amount" name="stake_amount" min="0" step="0.01" required placeholder="Enter amount" disabled>
+              <span class="input-group-text bg-dark text-info border-0 rounded-end-3">SOL</span>
+            </div>
+            <div class="form-text text-secondary" id="stakeRange"></div>
+            <div class="form-text text-warning">Available Balance: SOL <?=number_format($user_balance,2)?></div>
+            <div class="form-text text-info" id="expectedReturns"></div>
+          </div>
+        </div>
+        <div class="modal-footer border-0 pt-0 d-flex flex-column gap-2">
+          <button type="submit" class="btn btn-info w-100 fw-bold py-2" style="font-size:1.15rem; border-radius:0.75rem;">Stake Now</button>
+          <button type="button" class="btn btn-outline-secondary w-100" data-bs-dismiss="modal" style="border-radius:0.75rem;">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<!-- Scripts: Bootstrap first, then custom -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script defer>
     // Mobile sidebar toggle/overlay (copied from dashboard)
     var sidebar = document.getElementById('sidebar');
     var sidebarOverlay = document.getElementById('sidebarOverlay');
@@ -498,39 +520,41 @@ $total_pages = ceil($total_history / $limit);
         sidebar.classList.add('d-none');
       }
     });
-    // Stake modal logic
-    var stakeModal = document.getElementById('stakeModal');
-    stakeModal.addEventListener('show.bs.modal', function (event) {
-      var button = event.relatedTarget;
-      var planId = button.getAttribute('data-plan-id');
-      var planName = button.getAttribute('data-plan-name');
-      var min = button.getAttribute('data-min');
-      var max = button.getAttribute('data-max');
-      var dailyRoi = button.getAttribute('data-daily-roi');
-      var lockin = button.getAttribute('data-lockin');
-      document.getElementById('stake_plan_id').value = planId;
-      document.getElementById('stake_plan_name').value = planName;
-      document.getElementById('stake_amount').min = min;
-      document.getElementById('stake_amount').max = max;
-      document.getElementById('stakeRange').textContent = `Min: SOL ${parseFloat(min).toFixed(2)} | Max: SOL ${parseFloat(max).toFixed(2)}`;
-      document.getElementById('stake_amount').value = '';
-      document.getElementById('expectedReturns').textContent = '';
-      // Advanced logic: prevent over-staking
-      document.getElementById('stake_amount').addEventListener('input', function() {
-        var val = parseFloat(this.value);
-        var avail = <?=json_encode($user_balance)?>;
-        if (val > avail) {
-          this.value = avail;
-        }
-        // Show expected returns
-        if (val && dailyRoi && lockin) {
-          var total = val * (parseFloat(dailyRoi)/100) * parseInt(lockin);
-          document.getElementById('expectedReturns').textContent = `Expected Earnings: SOL ${total.toFixed(2)} (${lockin} days)`;
+    // Enhanced stake modal logic for plan selection
+    const planSelect = document.getElementById('stake_plan_id');
+    const amountInput = document.getElementById('stake_amount');
+    const stakeRange = document.getElementById('stakeRange');
+    const expectedReturns = document.getElementById('expectedReturns');
+    let selectedPlan = null;
+    if (planSelect) {
+      planSelect.addEventListener('change', function() {
+        const selected = planSelect.options[planSelect.selectedIndex];
+        if (!selected.value) return;
+        const min = parseFloat(selected.getAttribute('data-min'));
+        const max = parseFloat(selected.getAttribute('data-max'));
+        const lockin = parseInt(selected.getAttribute('data-lockin'));
+        amountInput.disabled = false;
+        amountInput.min = min;
+        amountInput.max = max;
+        amountInput.value = '';
+        stakeRange.textContent = `Min: SOL ${min.toFixed(2)} | Max: SOL ${max.toFixed(2)}`;
+        expectedReturns.textContent = '';
+        selectedPlan = { min, max, lockin };
+      });
+      amountInput.addEventListener('input', function() {
+        if (!selectedPlan) return;
+        let val = parseFloat(this.value);
+        if (isNaN(val)) val = 0;
+        if (val > selectedPlan.max) this.value = selectedPlan.max;
+        if (val < selectedPlan.min) this.value = selectedPlan.min;
+        if (val && selectedPlan.lockin) {
+          const total = val * (0.01) * selectedPlan.lockin; // Assuming daily ROI is 1% for simplicity in JS
+          expectedReturns.textContent = `Expected Earnings: SOL ${total.toFixed(2)} (${selectedPlan.lockin} days)`;
         } else {
-          document.getElementById('expectedReturns').textContent = '';
+          expectedReturns.textContent = '';
         }
       });
-    });
+    }
     // Progressive enhancement: AJAX stake
     const stakeForm = document.getElementById('stakeForm');
     if (stakeForm) {
@@ -592,6 +616,29 @@ $total_pages = ceil($total_history / $limit);
         url.searchParams.set('page', nextPage);
         window.location.href = url.toString();
       });
+    });
+    // Fallback JS trigger for stake modal
+    window.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('[data-bs-toggle="modal"][data-bs-target="#stakeModal"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          // If Bootstrap modal doesn't open, open it manually
+          setTimeout(function() {
+            var modalElem = document.getElementById('stakeModal');
+            if (modalElem && !modalElem.classList.contains('show')) {
+              try {
+                var modal = bootstrap.Modal.getOrCreateInstance(modalElem);
+                modal.show();
+              } catch (err) {
+                console.error('Modal fallback error:', err);
+              }
+            }
+          }, 200);
+        });
+      });
+    });
+    // Debug: log JS errors
+    window.addEventListener('error', function(e) {
+      console.error('JS Error:', e.message, e);
     });
   </script>
   <script src="public/sidebar-toggle.js" defer></script>

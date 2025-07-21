@@ -22,6 +22,9 @@ $pendingTx = $pdo->query("SELECT COUNT(*) FROM transactions WHERE status='pendin
 // Pending deposits count for notification
 $pendingDeposits = $pdo->query("SELECT COUNT(*) FROM transactions WHERE type='deposit' AND status='pending'")->fetchColumn();
 
+// Total staked by users
+$totalStaked = $pdo->query("SELECT SUM(amount) FROM user_stakes WHERE status='active'")->fetchColumn();
+
 // Fetch deposits over last 14 days
 $depositLabels = [];
 $depositData = [];
@@ -274,6 +277,7 @@ function usdt_placeholder($amount) {
     .dashboard-widget.deposits .widget-icon { background: linear-gradient(90deg, #22c55e 0%, #38bdf8 100%); color: #fff; }
     .dashboard-widget.withdrawals .widget-icon { background: linear-gradient(90deg, #ef4444 0%, #fbbf24 100%); color: #fff; }
     .dashboard-widget.pending .widget-icon { background: linear-gradient(90deg, #fbbf24 0%, #f59e42 100%); color: #fff; }
+    .dashboard-widget.staked .widget-icon { background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%); color: #fff; }
     .footer {
       background: rgba(17,24,39,0.95);
       color: #64748b;
@@ -390,6 +394,11 @@ function usdt_placeholder($amount) {
       <div class="widget-icon"><i class="bi bi-upload"></i></div>
       <div class="widget-title">Total Withdrawals</div>
       <div class="widget-value"><?=sol_display($totalWithdrawals)?><?=usdt_placeholder($totalWithdrawals)?></div>
+    </div>
+    <div class="dashboard-widget staked">
+      <div class="widget-icon"><i class="bi bi-piggy-bank"></i></div>
+      <div class="widget-title">Total Staked</div>
+      <div class="widget-value"><?=sol_display($totalStaked)?><?=usdt_placeholder($totalStaked)?></div>
     </div>
     <div class="dashboard-widget pending">
       <div class="widget-icon"><i class="bi bi-clock-history"></i></div>
