@@ -78,22 +78,15 @@ if (isset($_POST['action'], $_POST['id']) && in_array($_POST['action'], ['approv
             
             // Update user balance using the new calculation system
             $balance = calculateUserBalance($pdo, $userId);
-            $stmt = $pdo->prepare('INSERT INTO user_balances (user_id, available_balance, total_deposits, staked_amount, total_withdrawals, total_rewards, updated_at) 
-                                   VALUES (?, ?, ?, ?, ?, ?, NOW()) 
+            // Update user balance
+            $stmt = $pdo->prepare('INSERT INTO user_balances (user_id, available_balance) 
+                                   VALUES (?, ?) 
                                    ON DUPLICATE KEY UPDATE 
-                                   available_balance = VALUES(available_balance),
-                                   total_deposits = VALUES(total_deposits),
-                                   staked_amount = VALUES(staked_amount),
-                                   total_withdrawals = VALUES(total_withdrawals),
-                                   total_rewards = VALUES(total_rewards),
-                                   updated_at = NOW()');
+                                   available_balance = VALUES(available_balance)');
+            
             $stmt->execute([
                 $userId,
-                $balance['available_balance'],
-                $balance['total_deposits'],
-                $balance['staked_amount'],
-                $balance['total_withdrawals'],
-                $balance['total_rewards']
+                $balance['available_balance']
             ]);
             
             // Send notification to user

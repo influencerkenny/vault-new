@@ -172,6 +172,18 @@ CREATE TABLE IF NOT EXISTS payment_gateways (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- User Stake Profits Table
+CREATE TABLE IF NOT EXISTS user_stake_profits (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  stake_id INT NOT NULL,
+  amount DECIMAL(18,2) NOT NULL,
+  status ENUM('pending','withdrawable','withdrawn') DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (stake_id) REFERENCES user_stakes(id) ON DELETE CASCADE
+);
+
 -- Sample Data Inserts
 INSERT INTO admins (username, email, password_hash) VALUES (
   'admin',

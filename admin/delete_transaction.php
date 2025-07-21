@@ -62,24 +62,15 @@ function calculateUserBalance($pdo, $user_id) {
 function updateUserBalance($pdo, $user_id) {
     $balance = calculateUserBalance($pdo, $user_id);
     
-    // Update or insert user balance record
-    $stmt = $pdo->prepare('INSERT INTO user_balances (user_id, available_balance, total_deposits, staked_amount, total_withdrawals, total_rewards, updated_at) 
-                           VALUES (?, ?, ?, ?, ?, ?, NOW()) 
+    // Update user balance
+    $stmt = $pdo->prepare('INSERT INTO user_balances (user_id, available_balance) 
+                           VALUES (?, ?) 
                            ON DUPLICATE KEY UPDATE 
-                           available_balance = VALUES(available_balance),
-                           total_deposits = VALUES(total_deposits),
-                           staked_amount = VALUES(staked_amount),
-                           total_withdrawals = VALUES(total_withdrawals),
-                           total_rewards = VALUES(total_rewards),
-                           updated_at = NOW()');
+                           available_balance = VALUES(available_balance)');
     
     $stmt->execute([
         $user_id,
-        $balance['available_balance'],
-        $balance['total_deposits'],
-        $balance['staked_amount'],
-        $balance['total_withdrawals'],
-        $balance['total_rewards']
+        $balance['available_balance']
     ]);
     
     return $balance;

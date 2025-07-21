@@ -57,13 +57,19 @@ if ($status_filter !== '' && $status_filter !== 'all') {
 $where_sql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 // Fetch all users with balance and referral count
 $sql = "SELECT u.id, u.username, u.email, u.status, u.created_at, 
-        IFNULL(b.available_balance,0) AS available_balance,
+        GREATEST(
+            (
+                COALESCE((SELECT SUM(amount) FROM transactions WHERE user_id = u.id AND type = 'deposit' AND status = 'completed'), 0) -
+                COALESCE((SELECT SUM(amount) FROM user_stakes WHERE user_id = u.id AND status = 'active'), 0) -
+                COALESCE((SELECT SUM(amount) FROM transactions WHERE user_id = u.id AND type = 'withdrawal' AND status = 'completed'), 0) +
+                COALESCE((SELECT SUM(amount) FROM user_rewards WHERE user_id = u.id), 0)
+            ), 0
+        ) AS available_balance,
         (SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = u.id AND type = 'deposit' AND status = 'completed') AS total_deposits,
         (SELECT COALESCE(SUM(amount), 0) FROM user_rewards WHERE user_id = u.id) AS total_interest,
         (SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = u.id AND type = 'withdrawal' AND status = 'completed') AS total_withdrawals,
         (SELECT COUNT(*) FROM transactions WHERE user_id = u.id) AS transaction_count
         FROM users u 
-        LEFT JOIN user_balances b ON u.id = b.user_id 
         $where_sql ORDER BY u.created_at DESC";
 if (!empty($params)) {
     $stmt = $pdo->prepare($sql);
@@ -624,7 +630,7 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
               </div>
               <div class="alert alert-info mb-0 bg-info bg-opacity-20 border border-info">
                 <i class="bi bi-wallet2 me-2"></i>
-                <strong class="text-white">Current Balance:</strong> <span class="text-info fw-bold">SOL ${parseFloat(user.available_balance || 0).toFixed(2)}</span>
+                <strong class="text-white">Current Balance:</strong> <span class="text-dark fw-bold">SOL ${parseFloat(user.available_balance || 0).toFixed(2)}</span>
               </div>
             `;
             document.getElementById('topUpUserInfo').innerHTML = userInfo;

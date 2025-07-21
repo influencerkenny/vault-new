@@ -7,27 +7,55 @@ if (!isset($_SESSION['user_id'])) {
 $pdo = new PDO('mysql:host=localhost;dbname=vault_db', 'root', '');
 $user_id = $_SESSION['user_id'];
 $success = $error = '';
-// Handle staking (classic POST)
+// Handle staking (classic POST or AJAX)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['stake_plan_id'])) {
   $plan_id = (int)$_POST['stake_plan_id'];
   $amount = (float)$_POST['stake_amount'];
+  $response = ['success' => false, 'error' => '', 'new_balance' => null];
   // Fetch plan
   $stmt = $pdo->prepare('SELECT * FROM plans WHERE id=? AND status="active"');
   $stmt->execute([$plan_id]);
   $plan = $stmt->fetch(PDO::FETCH_ASSOC);
   if (!$plan) {
     $error = 'Invalid plan selected.';
+    $response['error'] = $error;
   } else if ($amount < $plan['min_investment'] || $amount > $plan['max_investment']) {
     $error = 'Amount must be between the plan minimum and maximum.';
+    $response['error'] = $error;
   } else {
-    $start = date('Y-m-d H:i:s');
-    $end = date('Y-m-d H:i:s', strtotime("+{$plan['lock_in_duration']} days"));
-    $stmt = $pdo->prepare('INSERT INTO investments (user_id, plan_id, amount, start_date, end_date, status) VALUES (?, ?, ?, ?, ?, "active")');
-    if ($stmt->execute([$user_id, $plan_id, $amount, $start, $end])) {
-      $success = 'Staking successful!';
+    // Check user available balance
+    $stmt = $pdo->prepare('SELECT available_balance FROM user_balances WHERE user_id = ?');
+    $stmt->execute([$user_id]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    $user_balance = $row ? (float)$row['available_balance'] : 0.00;
+    if ($amount > $user_balance) {
+      $error = 'Insufficient available balance.';
+      $response['error'] = $error;
     } else {
-      $error = 'Failed to stake in plan.';
+      $start = date('Y-m-d H:i:s');
+      $stmt = $pdo->prepare('INSERT INTO user_stakes (user_id, plan_id, amount, status, started_at) VALUES (?, ?, ?, "active", ?)');
+      if ($stmt->execute([$user_id, $plan_id, $amount, $start])) {
+        // Deduct from user balance
+        $stmt = $pdo->prepare('UPDATE user_balances SET available_balance = available_balance - ? WHERE user_id = ?');
+        $stmt->execute([$amount, $user_id]);
+        // Get new balance
+        $stmt = $pdo->prepare('SELECT available_balance FROM user_balances WHERE user_id = ?');
+        $stmt->execute([$user_id]);
+        $new_balance = (float)($stmt->fetch(PDO::FETCH_ASSOC)['available_balance'] ?? 0);
+        $success = 'Staking successful!';
+        $response['success'] = true;
+        $response['new_balance'] = $new_balance;
+      } else {
+        $error = 'Failed to stake in plan.';
+        $response['error'] = $error;
+      }
     }
+  }
+  // AJAX response
+  if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+    header('Content-Type: application/json');
+    echo json_encode($response);
+    exit;
   }
 }
 // Fetch user info
@@ -504,32 +532,58 @@ $total_pages = ceil($total_history / $limit);
       });
     });
     // Progressive enhancement: AJAX stake
-    document.getElementById('stakeForm').addEventListener('submit', function(e) {
-      if (!window.fetch) return; // fallback to classic
-      e.preventDefault();
-      const form = this;
-      const data = new FormData(form);
-      fetch('plans.php', {
-        method: 'POST',
-        body: data
-      })
-      .then(res => res.text())
-      .then(html => {
-        // Replace the plans grid and alerts with the new HTML (partial reload)
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-        const newGrid = doc.querySelector('.plans-grid');
-        const newSuccess = doc.getElementById('stakeSuccess');
-        const newError = doc.getElementById('stakeError');
-        if (newGrid) document.querySelector('.plans-grid').replaceWith(newGrid);
+    const stakeForm = document.getElementById('stakeForm');
+    if (stakeForm) {
+      stakeForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(stakeForm);
+        const btn = stakeForm.querySelector('button[type=submit]');
+        btn.disabled = true;
+        // Remove previous alerts
         if (document.getElementById('stakeSuccess')) document.getElementById('stakeSuccess').remove();
         if (document.getElementById('stakeError')) document.getElementById('stakeError').remove();
-        if (newSuccess) document.querySelector('.container-fluid').insertBefore(newSuccess, document.querySelector('.plans-grid'));
-        if (newError) document.querySelector('.container-fluid').insertBefore(newError, document.querySelector('.plans-grid'));
-        var modal = bootstrap.Modal.getInstance(document.getElementById('stakeModal'));
-        modal.hide();
+        fetch(window.location.href, {
+          method: 'POST',
+          body: formData,
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-success';
+            alert.id = 'stakeSuccess';
+            alert.textContent = 'Staking successful!';
+            stakeForm.querySelector('.modal-body').prepend(alert);
+            // Update available balance in modal
+            document.querySelectorAll('.text-warning').forEach(el => {
+              el.textContent = 'Available Balance: SOL ' + (data.new_balance !== null ? data.new_balance.toFixed(2) : '0.00');
+            });
+            setTimeout(() => {
+              const modal = bootstrap.Modal.getInstance(document.getElementById('stakeModal'));
+              modal.hide();
+              stakeForm.reset();
+              alert.remove();
+              window.location.reload(); // Reload to update plan history and widgets
+            }, 1200);
+          } else {
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-danger';
+            alert.id = 'stakeError';
+            alert.textContent = data.error || 'Failed to stake.';
+            stakeForm.querySelector('.modal-body').prepend(alert);
+          }
+        })
+        .catch(() => {
+          const alert = document.createElement('div');
+          alert.className = 'alert alert-danger';
+          alert.id = 'stakeError';
+          alert.textContent = 'Failed to stake.';
+          stakeForm.querySelector('.modal-body').prepend(alert);
+        })
+        .finally(() => { btn.disabled = false; });
       });
-    });
+    }
     // Pagination for staking history
     document.querySelectorAll('.load-more-history').forEach(function(btn) {
       btn.addEventListener('click', function() {

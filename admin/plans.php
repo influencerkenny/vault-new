@@ -271,96 +271,230 @@ if (
         .modal-content {
             background: linear-gradient(135deg, #232b3b 80%, #202736 100%);
             color: #e5e7eb;
-            border-radius: 12px;
-            padding: 18px 10px 14px 10px;
-            box-shadow: 0 8px 40px #0007, 0 1.5px 8px 0 rgba(31,41,55,0.10);
-            min-width: 220px;
+            border-radius: 16px;
+            padding: 0;
+            box-shadow: 0 12px 48px #0008, 0 2px 12px 0 rgba(31,41,55,0.15);
+            min-width: 280px;
             max-width: 98vw;
             width: 100%;
-            max-width: 340px;
+            max-width: 420px;
+            max-height: 85vh;
+            overflow: hidden;
             animation: modalScaleIn 0.25s;
             position: relative;
             border: 1.5px solid #2563eb33;
+            display: flex;
+            flex-direction: column;
         }
-        .modal-content h2 {
-            margin-top: 0;
-            margin-bottom: 14px;
-            font-size: 1.15rem;
+        
+        .modal-header {
+            background: linear-gradient(90deg, #2563eb 0%, #0ea5e9 100%);
+            color: #fff;
+            padding: 16px 20px 12px 20px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+        
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.1rem;
             font-weight: 700;
-            color: #38bdf8;
-            letter-spacing: -1px;
-            text-align: center;
+            color: #fff;
+            letter-spacing: -0.5px;
         }
+        
+        .close-modal {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: #fff;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 1rem;
+        }
+        
+        .close-modal:hover {
+            background: rgba(255,255,255,0.2);
+            transform: scale(1.1);
+        }
+        
+        .modal-section {
+            padding: 12px 20px;
+            border-bottom: 1px solid #374151;
+        }
+        
+        .modal-section:last-of-type {
+            border-bottom: none;
+        }
+        
+        .section-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: #60a5fa;
+        }
+        
+        .section-header i {
+            margin-right: 6px;
+            font-size: 1rem;
+        }
+        
+        .form-group {
+            margin-bottom: 10px;
+        }
+        
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        
         .modal-content label {
             font-weight: 500;
-            color: #60a5fa;
-            margin-bottom: 2px;
+            color: #94a3b8;
+            margin-bottom: 4px;
             display: block;
+            font-size: 0.9rem;
         }
+        
         .modal-content input,
         .modal-content textarea,
         .modal-content select {
-            background: #181f2a;
+            background: #1e293b;
             color: #fff;
-            border: 1.5px solid #2563eb33;
-            border-radius: 7px;
-            padding: 7px 8px;
-            margin-top: 2px;
-            margin-bottom: 8px;
+            border: 1.5px solid #374151;
+            border-radius: 6px;
+            padding: 8px 10px;
             width: 100%;
-            font-size: 0.98rem;
-            transition: border 0.2s, box-shadow 0.2s;
-            box-shadow: 0 1px 4px #0001;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            box-shadow: 0 1px 3px #0002;
         }
+        
         .modal-content input:focus,
         .modal-content textarea:focus,
         .modal-content select:focus {
             border: 1.5px solid #38bdf8;
             outline: none;
-            box-shadow: 0 0 0 2px #38bdf855;
+            box-shadow: 0 0 0 3px #38bdf833;
+            background: #1e293b;
         }
+        
+        .modal-content input::placeholder,
+        .modal-content textarea::placeholder {
+            color: #64748b;
+        }
+        
         .modal-content textarea {
-            min-height: 40px;
+            min-height: 60px;
             resize: vertical;
         }
-        .modal-content .modal-section {
-            margin-bottom: 10px;
+        
+        .modal-footer {
+            padding: 16px 20px;
+            background: #1e293b;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            flex-shrink: 0;
         }
-        .modal-content .btn {
-            width: 100%;
-            margin-top: 8px;
-            font-size: 1rem;
-            padding: 9px 0;
-            border-radius: 7px;
+        
+        .modal-footer .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .btn-secondary {
+            background: #64748b;
+            color: #fff;
+        }
+        
+        .btn-secondary:hover {
+            background: #475569;
+            transform: translateY(-1px);
+        }
+        
+        .btn-primary {
             background: linear-gradient(90deg, #2563eb 0%, #0ea5e9 100%);
             color: #fff;
-            font-weight: 700;
-            border: none;
             box-shadow: 0 2px 8px #2563eb33;
-            transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
         }
-        .modal-content .btn:hover, .modal-content .btn:focus {
+        
+        .btn-primary:hover {
             background: linear-gradient(90deg, #1d4ed8 0%, #2563eb 100%);
             box-shadow: 0 4px 16px #2563eb44;
-            transform: translateY(-1px) scale(1.01);
+            transform: translateY(-1px);
         }
-        .modal-content .btn:active {
-            background: linear-gradient(90deg, #2563eb 0%, #0ea5e9 100%);
-            box-shadow: 0 1px 4px #2563eb22;
-            transform: scale(0.98);
+        
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
         }
-        .modal-content .modal-fields-row {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-        }
-        .modal-content .modal-fields-row > label {
-            flex: 1 1 90px;
-            min-width: 80px;
+        
+        /* Scrollable content area */
+        .modal-form-content {
+            flex: 1;
+            overflow-y: auto;
+            max-height: calc(85vh - 120px); /* Subtract header and footer height */
         }
         @media (max-width: 700px) {
-            .modal-content { padding: 6px 1px; min-width: 0; max-width: 99vw; }
-            .modal-content h2 { font-size: 1rem; }
+            .modal-content {
+                max-width: 95vw;
+                margin: 10px;
+                border-radius: 12px;
+                max-height: 85vh;
+            }
+            
+            .modal-header {
+                padding: 12px 16px 8px 16px;
+            }
+            
+            .modal-header h2 {
+                font-size: 1rem;
+            }
+            
+            .modal-section {
+                padding: 10px 16px;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+            
+            .modal-footer {
+                padding: 12px 16px;
+                flex-direction: column;
+            }
+            
+            .modal-footer .btn {
+                width: 100%;
+                justify-content: center;
+                padding: 10px 16px;
+            }
         }
         .table-responsive { border-radius: 1rem; overflow-x: auto; }
         table.table { min-width: 900px; border-radius: 1rem; overflow: hidden; background: #151a23; }
@@ -542,59 +676,136 @@ if (
 <!-- Modal at end of body for proper overlay -->
 <div class="modal" id="planModal">
     <div class="modal-content" onclick="event.stopPropagation()">
-        <button class="close-modal" onclick="closeModal()" aria-label="Close">&times;</button>
-        <h2 id="modalTitle">Add Plan</h2>
-        <form method="post" id="planForm">
-            <div class="modal-section">
-                <label for="planName">Name</label>
-                <input type="text" name="name" id="planName" required>
-            </div>
-            <div class="modal-section">
-                <label for="planDesc">Description</label>
-                <textarea name="description" id="planDesc" required></textarea>
-            </div>
-            <div class="modal-section modal-fields-row">
-                <label for="planRoiType">ROI Type<br>
-                  <select name="roi_type" id="planRoiType" required>
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="monthly">Monthly</option>
-                  </select>
-                </label>
-                <label for="planRoiMode">ROI Mode<br>
-                  <select name="roi_mode" id="planRoiMode" required>
-                    <option value="percent">Percent (%)</option>
-                    <option value="fixed">Fixed ($)</option>
-                  </select>
-                </label>
-                <label for="planRoiValue" id="planRoiValueLabel">ROI Value<br>
-                  <input type="number" step="0.0001" name="roi_value" id="planRoiValue" required>
-                </label>
-            </div>
-            <div class="modal-section modal-fields-row">
-                <label for="planLockIn">Lock-in (days)<br><input type="number" name="lock_in_duration" id="planLockIn" required></label>
-                <label for="planMinInvest">Min Invest<br><input type="number" step="0.00000001" name="min_investment" id="planMinInvest" required></label>
-                <label for="planMaxInvest">Max Invest<br><input type="number" step="0.00000001" name="max_investment" id="planMaxInvest" required></label>
-            </div>
-            <div class="modal-section">
-                <label for="planStatus">Status</label>
-                <select name="status" id="planStatus">
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                </select>
-            </div>
-            <input type="hidden" name="currency" value="SOL">
-            <button class="btn" type="submit" id="modalSubmitBtn">Add Plan</button>
-            <input type="hidden" name="action" value="add" id="formAction">
-            <input type="hidden" name="id" id="planId">
-        </form>
+        <div class="modal-header">
+            <button class="close-modal" onclick="closeModal()" aria-label="Close">
+                <i class="bi bi-x-lg"></i>
+            </button>
+            <h2 id="modalTitle"><i class="bi bi-plus-circle me-2"></i>Add Plan</h2>
+        </div>
+        
+        <div class="modal-form-content">
+            <form method="post" id="planForm">
+                <!-- Basic Information Section -->
+                <div class="modal-section">
+                    <div class="section-header">
+                        <i class="bi bi-info-circle text-info"></i>
+                        <span>Basic Information</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="planName">
+                            <i class="bi bi-tag me-1"></i>Plan Name
+                        </label>
+                        <input type="text" name="name" id="planName" placeholder="Enter plan name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="planDesc">
+                            <i class="bi bi-text-paragraph me-1"></i>Description
+                        </label>
+                        <textarea name="description" id="planDesc" placeholder="Enter plan description" required></textarea>
+                    </div>
+                </div>
+
+                <!-- ROI Configuration Section -->
+                <div class="modal-section">
+                    <div class="section-header">
+                        <i class="bi bi-graph-up text-success"></i>
+                        <span>ROI Configuration</span>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="planRoiType">
+                                <i class="bi bi-calendar me-1"></i>ROI Type
+                            </label>
+                            <select name="roi_type" id="planRoiType" required>
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly">Monthly</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="planRoiMode">
+                                <i class="bi bi-percent me-1"></i>ROI Mode
+                            </label>
+                            <select name="roi_mode" id="planRoiMode" required>
+                                <option value="percent">Percent (%)</option>
+                                <option value="fixed">Fixed ($)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="planRoiValue" id="planRoiValueLabel">
+                            <i class="bi bi-calculator me-1"></i>ROI Value
+                        </label>
+                        <input type="number" step="0.0001" name="roi_value" id="planRoiValue" placeholder="Enter ROI value" required>
+                    </div>
+                </div>
+
+                <!-- Investment Limits Section -->
+                <div class="modal-section">
+                    <div class="section-header">
+                        <i class="bi bi-cash-coin text-warning"></i>
+                        <span>Investment Limits</span>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="planMinInvest">
+                                <i class="bi bi-arrow-down me-1"></i>Minimum Investment
+                            </label>
+                            <input type="number" step="0.00000001" name="min_investment" id="planMinInvest" placeholder="Min amount" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="planMaxInvest">
+                                <i class="bi bi-arrow-up me-1"></i>Maximum Investment
+                            </label>
+                            <input type="number" step="0.00000001" name="max_investment" id="planMaxInvest" placeholder="Max amount" required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Plan Settings Section -->
+                <div class="modal-section">
+                    <div class="section-header">
+                        <i class="bi bi-gear text-primary"></i>
+                        <span>Plan Settings</span>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="planLockIn">
+                                <i class="bi bi-lock me-1"></i>Lock-in Period (days)
+                            </label>
+                            <input type="number" name="lock_in_duration" id="planLockIn" placeholder="Enter days" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="planStatus">
+                                <i class="bi bi-toggle-on me-1"></i>Status
+                            </label>
+                            <select name="status" id="planStatus">
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <input type="hidden" name="currency" value="SOL">
+                <input type="hidden" name="action" value="add" id="formAction">
+                <input type="hidden" name="id" id="planId">
+            </form>
+        </div>
+        
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">
+                <i class="bi bi-x-circle me-2"></i>Cancel
+            </button>
+            <button class="btn btn-primary" type="submit" id="modalSubmitBtn" form="planForm">
+                <i class="bi bi-plus-circle me-2"></i>Add Plan
+            </button>
+        </div>
     </div>
 </div>
 <script>
 function openAddModal() {
     document.body.style.overflow = 'hidden';
-    console.log('openAddModal called');
-    alert('openAddModal called');
     document.getElementById('modalTitle').innerText = 'Add Plan';
     document.getElementById('formAction').value = 'add';
     document.getElementById('modalSubmitBtn').innerText = 'Add Plan';
@@ -602,12 +813,10 @@ function openAddModal() {
     document.getElementById('planId').value = '';
     document.getElementById('planRoiType').value = 'daily';
     document.getElementById('planRoiMode').value = 'percent';
-    updateRoiValueLabel();
     document.getElementById('planModal').classList.add('active');
-    console.log('modal element:', document.getElementById('planModal'));
-    console.log('modal classes:', document.getElementById('planModal').className);
 }
 window.openAddModal = openAddModal;
+
 function openEditModal(plan) {
     document.getElementById('modalTitle').innerText = 'Edit Plan';
     document.getElementById('formAction').value = 'edit';
@@ -617,7 +826,6 @@ function openEditModal(plan) {
     document.getElementById('planDesc').value = plan.description;
     document.getElementById('planRoiType').value = plan.roi_type || 'daily';
     document.getElementById('planRoiMode').value = plan.roi_mode || 'percent';
-    updateRoiValueLabel();
     document.getElementById('planRoiValue').value = plan.roi_value;
     document.getElementById('planLockIn').value = plan.lock_in_duration;
     document.getElementById('planMinInvest').value = plan.min_investment;
@@ -643,42 +851,77 @@ if (planForm) {
         const formData = new FormData(planForm);
         const action = formData.get('action');
         let url = window.location.href;
-        let method = 'POST';
+        
         // Show loading state
         document.getElementById('modalSubmitBtn').disabled = true;
         document.getElementById('modalSubmitBtn').innerText = (action === 'add' ? 'Adding...' : 'Updating...');
+        
         try {
             const res = await fetch(url, {
-                method,
+                method: 'POST',
                 body: formData,
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest'
                 }
             });
+            
+            if (!res.ok) {
+                throw new Error(`HTTP error! status: ${res.status}`);
+            }
+            
             const text = await res.text();
+            console.log('Response text:', text); // Debug log
+            
             // Try to parse returned HTML and update the plans grid
             const parser = new DOMParser();
             const doc = parser.parseFromString(text, 'text/html');
+            
+            // Check for parsing errors
+            const parseError = doc.querySelector('parsererror');
+            if (parseError) {
+                console.error('HTML parsing error:', parseError.textContent);
+                throw new Error('Invalid response format');
+            }
+            
             // Replace the plans grid and mobile list
             const newGrid = doc.querySelector('.plans-grid');
             const newMobile = doc.querySelector('.plans-mobile-list');
+            
             if (newGrid && newMobile) {
-                document.querySelector('.plans-grid').innerHTML = newGrid.innerHTML;
-                document.querySelector('.plans-mobile-list').innerHTML = newMobile.innerHTML;
+                const currentGrid = document.querySelector('.plans-grid');
+                const currentMobile = document.querySelector('.plans-mobile-list');
+                
+                if (currentGrid && currentMobile) {
+                    currentGrid.innerHTML = newGrid.innerHTML;
+                    currentMobile.innerHTML = newMobile.innerHTML;
+                }
             }
+            
             // Show success/error messages
             const newSuccess = doc.querySelector('div[style*="background:#22c55e"]');
             const newError = doc.querySelector('div[style*="background:#ef4444"]');
+            
             if (newSuccess) {
-                // Show a toast or alert, then close modal
                 alert(newSuccess.textContent.trim());
                 closeModal();
+                // Reload the page to show updated data
+                window.location.reload();
             } else if (newError) {
                 alert(newError.textContent.trim());
+            } else {
+                // If no specific message found, check if the response contains success indicators
+                if (text.includes('successfully') || text.includes('Plan added') || text.includes('Plan updated')) {
+                    alert('Operation completed successfully!');
+                    closeModal();
+                    window.location.reload();
+                } else {
+                    throw new Error('No success or error message found in response');
+                }
             }
+            
         } catch (err) {
-            // Remove any generic network/server error message
-            alert('An unexpected error occurred. Please try again.');
+            console.error('Form submission error:', err);
+            alert('An error occurred: ' + err.message);
         } finally {
             document.getElementById('modalSubmitBtn').disabled = false;
             document.getElementById('modalSubmitBtn').innerText = (action === 'add' ? 'Add Plan' : 'Update Plan');
@@ -707,9 +950,15 @@ function handleDeleteForms() {
                 const doc = parser.parseFromString(text, 'text/html');
                 const newGrid = doc.querySelector('.plans-grid');
                 const newMobile = doc.querySelector('.plans-mobile-list');
+                
                 if (newGrid && newMobile) {
-                    document.querySelector('.plans-grid').innerHTML = newGrid.innerHTML;
-                    document.querySelector('.plans-mobile-list').innerHTML = newMobile.innerHTML;
+                    const currentGrid = document.querySelector('.plans-grid');
+                    const currentMobile = document.querySelector('.plans-mobile-list');
+                    
+                    if (currentGrid && currentMobile) {
+                        currentGrid.innerHTML = newGrid.innerHTML;
+                        currentMobile.innerHTML = newMobile.innerHTML;
+                    }
                 }
                 const newSuccess = doc.querySelector('div[style*="background:#22c55e"]');
                 const newError = doc.querySelector('div[style*="background:#ef4444"]');
@@ -727,23 +976,57 @@ function handleDeleteForms() {
 }
 handleDeleteForms();
 
-// Update ROI label based on type/mode
+// Simple function to update ROI label text only
 function updateRoiValueLabel() {
-  var type = document.getElementById('planRoiType').value;
-  var mode = document.getElementById('planRoiMode').value;
-  var label = 'ROI Value';
-  if (mode === 'percent') {
-    label = 'ROI Value (' + type.charAt(0).toUpperCase() + type.slice(1) + ' %)' ;
-  } else {
-    label = 'ROI Value (' + type.charAt(0).toUpperCase() + type.slice(1) + ' $)';
-  }
-  var labelElem = document.getElementById('planRoiValueLabel');
-  if (labelElem) {
-    labelElem.innerHTML = label + '<br><input type="number" step="0.0001" name="roi_value" id="planRoiValue" required>';
-  }
+    try {
+        var type = document.getElementById('planRoiType');
+        var mode = document.getElementById('planRoiMode');
+        var labelElem = document.getElementById('planRoiValueLabel');
+        
+        // Only proceed if all elements exist
+        if (!type || !mode || !labelElem) {
+            return false;
+        }
+        
+        var typeValue = type.value || 'daily';
+        var modeValue = mode.value || 'percent';
+        var label = 'ROI Value';
+        
+        if (modeValue === 'percent') {
+            label = 'ROI Value (' + typeValue.charAt(0).toUpperCase() + typeValue.slice(1) + ' %)';
+        } else {
+            label = 'ROI Value (' + typeValue.charAt(0).toUpperCase() + typeValue.slice(1) + ' $)';
+        }
+        
+        // Use textContent instead of innerHTML for safety
+        labelElem.textContent = label;
+        return true;
+    } catch (error) {
+        console.error('Error in updateRoiValueLabel:', error);
+        return false;
+    }
 }
-document.getElementById('planRoiType').addEventListener('change', updateRoiValueLabel);
-document.getElementById('planRoiMode').addEventListener('change', updateRoiValueLabel);
+
+// Add event listeners for ROI type and mode changes
+document.addEventListener('DOMContentLoaded', function() {
+    // Wait for elements to be ready
+    setTimeout(function() {
+        const roiTypeSelect = document.getElementById('planRoiType');
+        const roiModeSelect = document.getElementById('planRoiMode');
+        
+        if (roiTypeSelect) {
+            roiTypeSelect.addEventListener('change', function() {
+                setTimeout(updateRoiValueLabel, 100);
+            });
+        }
+        
+        if (roiModeSelect) {
+            roiModeSelect.addEventListener('change', function() {
+                setTimeout(updateRoiValueLabel, 100);
+            });
+        }
+    }, 200);
+});
 </script>
 <!-- Mobile Sidebar Overlay -->
 <div id="sidebarOverlay" class="sidebar-mobile-overlay"></div>

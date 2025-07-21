@@ -70,6 +70,23 @@ if ($availableBalance < 0) {
   $availableBalance = 0.00;
 }
 
+// Fetch Pending and Withdrawable Balances for staking profits
+$pendingBalance = 0.00;
+$withdrawableBalance = 0.00;
+try {
+  // Pending: profits dropped in last 48h (status = 'pending')
+  $stmt = $pdo->prepare("SELECT SUM(amount) AS pending_balance FROM user_stake_profits WHERE user_id = ? AND status = 'pending'");
+  $stmt->execute([$_SESSION['user_id']]);
+  $pendingBalance = (float)($stmt->fetch(PDO::FETCH_ASSOC)['pending_balance'] ?? 0);
+
+  // Withdrawable: profits matured (status = 'withdrawable')
+  $stmt = $pdo->prepare("SELECT SUM(amount) AS withdrawable_balance FROM user_stake_profits WHERE user_id = ? AND status = 'withdrawable'");
+  $stmt->execute([$_SESSION['user_id']]);
+  $withdrawableBalance = (float)($stmt->fetch(PDO::FETCH_ASSOC)['withdrawable_balance'] ?? 0);
+} catch (Exception $e) {
+  // Handle error if needed
+}
+
 // Portfolio Change & APY (placeholder)
 $portfolioChange = 12.5;
 $apy = 12.8;
@@ -125,8 +142,9 @@ function sol_display($amount) {
   return '<span class="sol-value">' . number_format($amount, 2) . ' SOL</span>';
 }
 function usdt_placeholder($amount) {
-  // Placeholder span for JS to fill in
-  return '<span class="usdt-convert" data-sol="' . htmlspecialchars($amount, ENT_QUOTES) . '">≈ $--.-- USDT</span>';
+  // Calculate USDT value using correct rate (1 SOL = $177.32 USDT)
+  $usdtAmount = $amount * 177.32;
+  return '<span class="usdt-convert" data-sol="' . htmlspecialchars($amount, ENT_QUOTES) . '">≈ $' . number_format($usdtAmount, 2) . ' USDT</span>';
 }
 ?>
 <!DOCTYPE html>
@@ -503,7 +521,8 @@ function usdt_placeholder($amount) {
         <img src="/vault-logo-new.png" alt="Vault Logo" class="logo me-3">
         <a href="/" class="back-link"><i class="bi bi-arrow-left"></i> Back to Home</a>
       </div>
-      <div><!-- Wallet connection placeholder -->
+      
+      <div>
         <!-- Notification Dropdown -->
         <div class="dropdown me-3">
           <button class="btn btn-outline-info position-relative" type="button" id="notificationDropdown" data-bs-toggle="dropdown" aria-expanded="false">
@@ -585,16 +604,6 @@ function usdt_placeholder($amount) {
         <button id="toggleBalance" class="btn btn-sm btn-outline-info" type="button" aria-label="Toggle balance visibility">
           <i id="balanceIcon" class="bi bi-eye"></i>
         </button>
-        <div class="ms-auto d-flex align-items-center">
-          <small class="text-muted me-2">
-            <i class="bi bi-currency-exchange me-1"></i>
-            SOL Price: <span id="solPrice" class="text-info">$--.--</span>
-          </small>
-          <small class="text-muted">
-            <i class="bi bi-clock me-1"></i>
-            Updated: <span id="lastUpdate" class="text-muted">--:--</span>
-          </small>
-        </div>
       </div>
       <!-- Portfolio cards row -->
       <div class="portfolio-cards mb-4">
@@ -617,6 +626,16 @@ function usdt_placeholder($amount) {
           <div class="card-title">Available Balance</div>
           <div class="card-value balance-value"><?=sol_display($portfolio['availableBalance'])?><?=usdt_placeholder($portfolio['availableBalance'])?></div>
           <div class="card-footer">Ready to stake</div>
+        </div>
+        <div class="portfolio-card pending">
+          <div class="card-title">Pending Balance</div>
+          <div class="card-value"><?=sol_display($pendingBalance)?><?=usdt_placeholder($pendingBalance)?></div>
+          <div class="card-footer">Profits maturing in 48h</div>
+        </div>
+        <div class="portfolio-card withdrawable">
+          <div class="card-title">Withdrawable</div>
+          <div class="card-value"><?=sol_display($withdrawableBalance)?><?=usdt_placeholder($withdrawableBalance)?></div>
+          <div class="card-footer">Available to withdraw</div>
         </div>
       </div>
       <!-- Chart and quick links row -->
@@ -925,8 +944,20 @@ function usdt_placeholder($amount) {
             availableElement.innerHTML = sol_display(balance.available_balance) + usdt_placeholder(balance.available_balance);
           }
           
+          // Update Pending Balance
+          const pendingElement = document.querySelector('.portfolio-card.pending .card-value');
+          if (pendingElement) {
+            pendingElement.innerHTML = sol_display(balance.pending_balance) + usdt_placeholder(balance.pending_balance);
+          }
+
+          // Update Withdrawable Balance
+          const withdrawableElement = document.querySelector('.portfolio-card.withdrawable .card-value');
+          if (withdrawableElement) {
+            withdrawableElement.innerHTML = sol_display(balance.withdrawable_balance) + usdt_placeholder(balance.withdrawable_balance);
+          }
+          
           // Update USDT conversions after balance update
-          setTimeout(updateAllUsdtConversions, 100);
+          setTimeout(updateAllPriceConversions, 100);
         }
       })
       .catch(error => console.error('Error updating balance:', error));
@@ -941,70 +972,43 @@ function usdt_placeholder($amount) {
     }
     
     function usdt_placeholder(amount) {
-      return '<span class="usdt-convert" data-sol="' + amount + '">≈ $--.-- USDT</span>';
+      // Calculate USDT value using correct rate (1 SOL = $177.32 USDT)
+      const usdtAmount = amount * 177.32;
+      return '<span class="usdt-convert" data-sol="' + amount + '">≈ $' + usdtAmount.toFixed(2) + ' USDT</span>';
     }
 
-    // SOL to USDT conversion functionality
-    let solToUsdtRate = 0;
+    // Price update functionality (general)
+    let currentPriceRate = 177.32; // Correct SOL to USDT rate
     
-    // Show loading state for USDT conversions
-    function showUsdtLoading() {
-      const usdtElements = document.querySelectorAll('.usdt-convert');
-      usdtElements.forEach(element => {
+    // Show loading state for price conversions
+    function showPriceLoading() {
+      const priceElements = document.querySelectorAll('.usdt-convert');
+      priceElements.forEach(element => {
         element.classList.add('loading');
         element.textContent = '≈ $--.-- USDT (Loading...)';
       });
     }
     
-    // Show error state for USDT conversions
-    function showUsdtError() {
-      const usdtElements = document.querySelectorAll('.usdt-convert');
-      usdtElements.forEach(element => {
+    // Show error state for price conversions
+    function showPriceError() {
+      const priceElements = document.querySelectorAll('.usdt-convert');
+      priceElements.forEach(element => {
         element.classList.remove('loading');
         element.classList.add('error');
         element.textContent = '≈ $--.-- USDT (Rate Unavailable)';
       });
     }
     
-    // Fetch SOL to USDT conversion rate
-    async function fetchSolToUsdtRate() {
-      showUsdtLoading();
-      
-      try {
-        const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd');
-        const data = await response.json();
-        
-        if (data.solana && data.solana.usd) {
-          solToUsdtRate = data.solana.usd;
-          updateAllUsdtConversions();
-        } else {
-          throw new Error('Invalid response format');
-        }
-      } catch (error) {
-        console.error('Error fetching SOL to USDT rate:', error);
-        // Fallback rate if API fails
-        solToUsdtRate = 100; // Approximate SOL price
-        updateAllUsdtConversions();
-        showUsdtError();
-      }
-    }
-    
-    // Update all USDT conversions on the page
-    function updateAllUsdtConversions() {
-      const usdtElements = document.querySelectorAll('.usdt-convert');
-      usdtElements.forEach(element => {
-        const solAmount = parseFloat(element.getAttribute('data-sol') || 0);
-        const usdtAmount = solAmount * solToUsdtRate;
+    // Update all price conversions on the page
+    function updateAllPriceConversions() {
+      const priceElements = document.querySelectorAll('.usdt-convert');
+      priceElements.forEach(element => {
+        const amount = parseFloat(element.getAttribute('data-sol') || 0);
+        const convertedAmount = amount * currentPriceRate;
         
         element.classList.remove('loading', 'error');
-        element.textContent = `≈ $${usdtAmount.toFixed(2)} USDT`;
+        element.textContent = `≈ $${convertedAmount.toFixed(2)} USDT`;
       });
-      
-      // Update SOL price indicator
-      const solPriceElement = document.getElementById('solPrice');
-      if (solPriceElement) {
-        solPriceElement.textContent = `$${solToUsdtRate.toFixed(2)}`;
-      }
       
       // Update last update time
       const lastUpdateElement = document.getElementById('lastUpdate');
@@ -1014,9 +1018,8 @@ function usdt_placeholder($amount) {
       }
     }
     
-    // Initialize conversion rate and update every 5 minutes
-    fetchSolToUsdtRate();
-    setInterval(fetchSolToUsdtRate, 300000); // Update every 5 minutes
+    // Initialize price updates with default rate
+    updateAllPriceConversions();
 
     window.addEventListener('resize', function() {
       if (window.innerWidth >= 992) {
@@ -1034,20 +1037,25 @@ function usdt_placeholder($amount) {
     const toggleBtn = document.getElementById('toggleBalance');
     const balanceIcon = document.getElementById('balanceIcon');
     const balanceValues = document.querySelectorAll('.balance-value');
+    
     function updateBalanceDisplay() {
       balanceValues.forEach(function(el) {
         if (showBalance) {
-          el.textContent = el.dataset.value;
+          // Show the original content with proper HTML structure
+          el.innerHTML = el.dataset.value;
         } else {
-          el.textContent = '••••••';
+          // Hide with dots but maintain font size
+          el.innerHTML = '<span style="font-size: inherit; color: inherit;">••••••</span>';
         }
       });
       balanceIcon.className = showBalance ? 'bi bi-eye' : 'bi bi-eye-slash';
     }
+    
     // Store original values in data-value
     balanceValues.forEach(function(el) {
-      el.dataset.value = el.textContent;
+      el.dataset.value = el.innerHTML;
     });
+    
     if (toggleBtn) {
       toggleBtn.addEventListener('click', function() {
         showBalance = !showBalance;
