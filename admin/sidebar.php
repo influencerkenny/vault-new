@@ -17,9 +17,11 @@ $system_name = get_setting('system_name') ?: 'Vault Admin';
     left: 0 !important;
     z-index: 2000 !important;
   }
+  .sidebar-close-btn { display: block !important; }
 }
 </style>
 <div class="sidebar" id="sidebar" aria-label="Admin sidebar navigation" style="background: rgba(10,16,30,0.95); border-right: 1px solid #1e293b; min-height: 100vh; width: 260px; position: fixed; top: 0; left: 0; z-index: 100; padding: 2rem 1.5rem 1.5rem 1.5rem; display: flex; flex-direction: column; transition: left 0.3s;">
+  <button type="button" class="sidebar-close-btn" aria-label="Close sidebar" onclick="closeSidebar()" style="position:absolute;top:14px;right:14px;display:none;font-size:2rem;background:none;border:none;color:#fff;z-index:2100;line-height:1;cursor:pointer;">&times;</button>
   <div class="logo mb-4" style="margin-bottom: 2rem; text-align: center;">
     <img src="<?=htmlspecialchars($logo)?>" alt="Logo" style="height:40px;">
     <div style="font-weight:700;font-size:1.3rem;color:#38bdf8;"> <?=htmlspecialchars($system_name)?> </div>

@@ -57,19 +57,13 @@ if ($status_filter !== '' && $status_filter !== 'all') {
 $where_sql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 // Fetch all users with balance and referral count
 $sql = "SELECT u.id, u.username, u.email, u.status, u.created_at, 
-        GREATEST(
-            (
-                COALESCE((SELECT SUM(amount) FROM transactions WHERE user_id = u.id AND type = 'deposit' AND status = 'completed'), 0) -
-                COALESCE((SELECT SUM(amount) FROM user_stakes WHERE user_id = u.id AND status = 'active'), 0) -
-                COALESCE((SELECT SUM(amount) FROM transactions WHERE user_id = u.id AND type = 'withdrawal' AND status = 'completed'), 0) +
-                COALESCE((SELECT SUM(amount) FROM user_rewards WHERE user_id = u.id), 0)
-            ), 0
-        ) AS available_balance,
+        b.available_balance, b.withdrawable_balance,
         (SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = u.id AND type = 'deposit' AND status = 'completed') AS total_deposits,
         (SELECT COALESCE(SUM(amount), 0) FROM user_rewards WHERE user_id = u.id) AS total_interest,
         (SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = u.id AND type = 'withdrawal' AND status = 'completed') AS total_withdrawals,
         (SELECT COUNT(*) FROM transactions WHERE user_id = u.id) AS transaction_count
         FROM users u 
+        LEFT JOIN user_balances b ON u.id = b.user_id
         $where_sql ORDER BY u.created_at DESC";
 if (!empty($params)) {
     $stmt = $pdo->prepare($sql);
@@ -238,6 +232,19 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
       .modal-dialog.modal-sm { max-width: 98vw; }
       .modal-content { font-size: 0.89rem; }
     }
+    .user-action-popover-menu {
+      z-index: 1055 !important;
+      animation: fadeInPopover 0.22s cubic-bezier(.4,0,.2,1);
+      outline: none;
+      left: 50%;
+      transform: translate(-50%, -110%);
+      right: auto;
+      bottom: auto;
+    }
+    @keyframes fadeInPopover {
+      from { opacity: 0; transform: translateY(10px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
   </style>
 </head>
 <body>
@@ -292,68 +299,59 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
               </td>
               <td><?=date('M d, Y', strtotime($user['created_at']))?></td>
               <td>
-                <div class="action-buttons">
-                  <!-- View Button -->
-                  <button class="btn btn-sm btn-outline-info view-user-btn" type="button"
-                    data-user-id="<?=$user['id']?>"
+                <div class="d-grid gap-2">
+                  <button class="btn btn-sm btn-outline-info view-user-btn" type="button" data-bs-toggle="modal" data-bs-target="#userDetailModal"
+                    data-id="<?=$user['id']?>"
                     data-username="<?=htmlspecialchars($user['username'])?>"
                     data-email="<?=htmlspecialchars($user['email'])?>"
                     data-status="<?=htmlspecialchars($user['status'])?>"
                     data-created="<?=htmlspecialchars($user['created_at'])?>"
                     data-available-balance="<?=htmlspecialchars($user['available_balance'])?>"
+                    data-withdrawable-balance="<?=htmlspecialchars($user['withdrawable_balance'])?>"
                     data-total-deposits="<?=htmlspecialchars($user['total_deposits'])?>"
                     data-total-interest="<?=htmlspecialchars($user['total_interest'])?>"
                     data-total-withdrawals="<?=htmlspecialchars($user['total_withdrawals'])?>"
                     data-transaction-count="<?=htmlspecialchars($user['transaction_count'])?>"
-                    data-bs-toggle="modal" data-bs-target="#userDetailModal"
-                    title="View User Details">
-                    <i class="bi bi-eye"></i>
+                    title="View User Details" role="menuitem">
+                    <i class="bi bi-eye me-2"></i>View Details
                   </button>
-                  
                   <?php if ($user['status'] === 'blocked'): ?>
-                    <!-- Unblock Button -->
-                    <form method="post" style="display:inline;">
-                      <input type="hidden" name="user_id" value="<?=$user['id']?>">
-                      <input type="hidden" name="action_type" value="unblock">
-                      <button class="btn btn-sm btn-success" type="submit" onclick="return confirm('Unblock this user?')" title="Unblock User">
-                        <i class="bi bi-unlock"></i>
-                      </button>
-                    </form>
+                  <form method="post" style="display:inline;">
+                    <input type="hidden" name="user_id" value="<?=$user['id']?>">
+                    <input type="hidden" name="action_type" value="unblock">
+                    <button class="dropdown-item text-success bg-dark user-action-item" type="submit" onclick="return confirm('Unblock this user?')" title="Unblock User" role="menuitem">
+                      <i class="bi bi-unlock me-2"></i>Unblock
+                    </button>
+                  </form>
                   <?php elseif ($user['status'] === 'suspended'): ?>
-                    <!-- Unsuspend Button -->
-                    <form method="post" style="display:inline;">
-                      <input type="hidden" name="user_id" value="<?=$user['id']?>">
-                      <input type="hidden" name="action_type" value="unsuspend">
-                      <button class="btn btn-sm btn-success" type="submit" onclick="return confirm('Unsuspend this user?')" title="Unsuspend User">
-                        <i class="bi bi-play-circle"></i>
-                      </button>
-                    </form>
+                  <form method="post" style="display:inline;">
+                    <input type="hidden" name="user_id" value="<?=$user['id']?>">
+                    <input type="hidden" name="action_type" value="unsuspend">
+                    <button class="dropdown-item text-success bg-dark user-action-item" type="submit" onclick="return confirm('Unsuspend this user?')" title="Unsuspend User" role="menuitem">
+                      <i class="bi bi-play-circle me-2"></i>Unsuspend
+                    </button>
+                  </form>
                   <?php else: ?>
-                    <!-- Block Button -->
-                    <form method="post" style="display:inline;">
-                      <input type="hidden" name="user_id" value="<?=$user['id']?>">
-                      <input type="hidden" name="action_type" value="block">
-                      <button class="btn btn-sm btn-warning" type="submit" onclick="return confirm('Block this user?')" title="Block User">
-                        <i class="bi bi-slash-circle"></i>
-                      </button>
-                    </form>
-                    
-                    <!-- Suspend Button -->
-                    <form method="post" style="display:inline;">
-                      <input type="hidden" name="user_id" value="<?=$user['id']?>">
-                      <input type="hidden" name="action_type" value="suspend">
-                      <button class="btn btn-sm btn-outline-warning" type="submit" onclick="return confirm('Suspend this user?')" title="Suspend User">
-                        <i class="bi bi-pause-circle"></i>
-                      </button>
-                    </form>
+                  <form method="post" style="display:inline;">
+                    <input type="hidden" name="user_id" value="<?=$user['id']?>">
+                    <input type="hidden" name="action_type" value="block">
+                    <button class="dropdown-item text-warning bg-dark user-action-item" type="submit" onclick="return confirm('Block this user?')" title="Block User" role="menuitem">
+                      <i class="bi bi-slash-circle me-2"></i>Block
+                    </button>
+                  </form>
+                  <form method="post" style="display:inline;">
+                    <input type="hidden" name="user_id" value="<?=$user['id']?>">
+                    <input type="hidden" name="action_type" value="suspend">
+                    <button class="dropdown-item text-warning bg-dark user-action-item" type="submit" onclick="return confirm('Suspend this user?')" title="Suspend User" role="menuitem">
+                      <i class="bi bi-pause-circle me-2"></i>Suspend
+                    </button>
+                  </form>
                   <?php endif; ?>
-                  
-                  <!-- Delete Button -->
                   <form method="post" style="display:inline;">
                     <input type="hidden" name="user_id" value="<?=$user['id']?>">
                     <input type="hidden" name="action_type" value="delete">
-                    <button class="btn btn-sm btn-danger" type="submit" onclick="return confirm('Delete this user? This cannot be undone.')" title="Delete User">
-                      <i class="bi bi-trash"></i>
+                    <button class="dropdown-item text-danger bg-dark user-action-item" type="submit" onclick="return confirm('Delete this user? This cannot be undone.')" title="Delete User" role="menuitem">
+                      <i class="bi bi-trash me-2"></i>Delete
                     </button>
                   </form>
                 </div>
@@ -418,6 +416,7 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <option value="">Select Wallet Type</option>
                 <option value="deposit">Deposit</option>
                 <option value="interest">Interest</option>
+                <option value="withdrawable">Withdrawable</option>
               </select>
             </div>
             <div class="mb-3">
@@ -511,18 +510,32 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
         if (e.target.closest('.view-user-btn')) {
           var btn = e.target.closest('.view-user-btn');
           var user = {
-            id: btn.getAttribute('data-user-id'),
+            id: btn.getAttribute('data-id'),
             username: btn.getAttribute('data-username'),
             email: btn.getAttribute('data-email'),
             status: btn.getAttribute('data-status'),
             created_at: btn.getAttribute('data-created'),
             available_balance: btn.getAttribute('data-available-balance'),
+            withdrawable_balance: btn.getAttribute('data-withdrawable-balance'),
             total_deposits: btn.getAttribute('data-total-deposits'),
             total_interest: btn.getAttribute('data-total-interest'),
             total_withdrawals: btn.getAttribute('data-total-withdrawals'),
             transaction_count: btn.getAttribute('data-transaction-count')
           };
-          
+          // Debug log
+          console.log('View Details clicked, user:', user);
+          // Check for missing/empty attributes
+          var missing = [];
+          for (var key in user) {
+            if (!user[key]) missing.push(key);
+          }
+          if (missing.length > 0) {
+            var warn = document.createElement('div');
+            warn.className = 'alert alert-danger';
+            warn.textContent = 'Warning: Missing user data: ' + missing.join(', ');
+            document.body.prepend(warn);
+            setTimeout(function() { warn.remove(); }, 4000);
+          }
           // Store user data globally for use in other modals
           window.currentUser = user;
           
@@ -557,6 +570,20 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <div class="p-2 bg-secondary bg-opacity-20 rounded">
                           <small class="text-white d-block">Registered</small>
                           <span class="text-white">${new Date(user.created_at).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="row g-2 mt-3">
+                      <div class="col-6">
+                        <div class="p-2 bg-secondary bg-opacity-20 rounded">
+                          <small class="text-white d-block">Available Balance</small>
+                          <span class="text-white fw-bold">SOL ${parseFloat(user.available_balance || 0).toFixed(2)}</span>
+                        </div>
+                      </div>
+                      <div class="col-6">
+                        <div class="p-2 bg-secondary bg-opacity-20 rounded">
+                          <small class="text-white d-block">Withdrawable Balance</small>
+                          <span class="text-white fw-bold">SOL ${parseFloat(user.withdrawable_balance || 0).toFixed(2)}</span>
                         </div>
                       </div>
                     </div>
@@ -614,31 +641,6 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
       });
 
-      // Handle Top Up button click
-      var topUpBtn = document.getElementById('topUpBtn');
-      if (topUpBtn) {
-        topUpBtn.addEventListener('click', function() {
-          if (window.currentUser) {
-            var user = window.currentUser;
-            var userInfo = `
-              <div class="d-flex align-items-center mb-2">
-                <i class="bi bi-person-circle text-info me-2"></i>
-                <div>
-                  <strong class="text-white">${user.username}</strong><br>
-                  <small class="text-light">${user.email}</small>
-                </div>
-              </div>
-              <div class="alert alert-info mb-0 bg-info bg-opacity-20 border border-info">
-                <i class="bi bi-wallet2 me-2"></i>
-                <strong class="text-white">Current Balance:</strong> <span class="text-dark fw-bold">SOL ${parseFloat(user.available_balance || 0).toFixed(2)}</span>
-              </div>
-            `;
-            document.getElementById('topUpUserInfo').innerHTML = userInfo;
-            document.getElementById('topUpUserId').value = user.id;
-          }
-        });
-      }
-
       // Handle Deduct button click
       var deductBtn = document.getElementById('deductBtn');
       if (deductBtn) {
@@ -657,9 +659,182 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <i class="bi bi-wallet2 me-2"></i>
                 <strong class="text-white">Current Balance:</strong> <span class="text-warning fw-bold">SOL ${parseFloat(user.available_balance || 0).toFixed(2)}</span>
               </div>
+              <div class="alert alert-warning mb-0 bg-warning bg-opacity-20 border border-warning mt-2">
+                <i class="bi bi-wallet2 me-2"></i>
+                <strong class="text-white">Withdrawable Balance:</strong> <span class="text-warning fw-bold">SOL ${parseFloat(user.withdrawable_balance || 0).toFixed(2)}</span>
+              </div>
             `;
             document.getElementById('deductUserInfo').innerHTML = userInfo;
             document.getElementById('deductUserId').value = user.id;
+          }
+        });
+      }
+    });
+  </script>
+  <script>
+    // Mini popover/modal for User Actions
+    const userActionBtns = document.querySelectorAll('.user-action-popover-btn');
+    userActionBtns.forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const userId = this.getAttribute('data-user-id');
+        const menu = document.getElementById('userActionPopoverMenu' + userId);
+        // Hide all other popovers
+        document.querySelectorAll('.user-action-popover-menu').forEach(m => { if (m !== menu) m.style.display = 'none'; });
+        // Toggle this one
+        if (menu.style.display === 'block') {
+          menu.style.display = 'none';
+          btn.setAttribute('aria-expanded', 'false');
+        } else {
+          menu.style.display = 'block';
+          btn.setAttribute('aria-expanded', 'true');
+          menu.focus();
+          // Focus trap
+          const focusable = menu.querySelectorAll('button, [tabindex]:not([tabindex="-1"])');
+          if (focusable.length) focusable[0].focus();
+        }
+      });
+    });
+    // Hide popover when clicking outside
+    window.addEventListener('click', function(e) {
+      if (!e.target.closest('.user-action-popover-btn') && !e.target.closest('.user-action-popover-menu')) {
+        document.querySelectorAll('.user-action-popover-menu').forEach(m => m.style.display = 'none');
+        userActionBtns.forEach(btn => btn.setAttribute('aria-expanded', 'false'));
+      }
+    });
+    // Keyboard navigation and auto-close on action
+    const userActionMenus = document.querySelectorAll('.user-action-popover-menu');
+    userActionMenus.forEach(menu => {
+      menu.addEventListener('keydown', function(e) {
+        const focusable = menu.querySelectorAll('button, [tabindex]:not([tabindex="-1"])');
+        const idx = Array.prototype.indexOf.call(focusable, document.activeElement);
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          if (idx < focusable.length - 1) focusable[idx + 1].focus();
+          else focusable[0].focus();
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          if (idx > 0) focusable[idx - 1].focus();
+          else focusable[focusable.length - 1].focus();
+        } else if (e.key === 'Escape') {
+          menu.style.display = 'none';
+          userActionBtns.forEach(btn => btn.setAttribute('aria-expanded', 'false'));
+        }
+      });
+      // Auto-close on action
+      menu.querySelectorAll('form,button').forEach(el => {
+        el.addEventListener('click', function() {
+          setTimeout(() => { menu.style.display = 'none'; userActionBtns.forEach(btn => btn.setAttribute('aria-expanded', 'false')); }, 150);
+        });
+      });
+    });
+  </script>
+  <script>
+    // Top Up form validation
+    document.addEventListener('DOMContentLoaded', function() {
+      var topUpForm = document.getElementById('topUpForm');
+      if (topUpForm) {
+        topUpForm.addEventListener('submit', function(e) {
+          var userId = document.getElementById('topUpUserId').value;
+          var amount = parseFloat(document.getElementById('topUpAmount').value);
+          var errorDiv = document.getElementById('topUpErrorMsg');
+          if (errorDiv) errorDiv.remove();
+          if (!userId || userId <= 0 || isNaN(amount) || amount <= 0) {
+            e.preventDefault();
+            var msg = document.createElement('div');
+            msg.id = 'topUpErrorMsg';
+            msg.className = 'alert alert-danger mb-2';
+            msg.textContent = 'Please select a user and enter a valid amount greater than zero.';
+            topUpForm.querySelector('.modal-body').prepend(msg);
+            return false;
+          }
+        });
+      }
+    });
+  </script>
+  <!-- Ensure Top Up modal fields are cleared when closed -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var topUpModal = document.getElementById('topUpModal');
+      if (topUpModal) {
+        topUpModal.addEventListener('hidden.bs.modal', function() {
+          document.getElementById('topUpUserInfo').innerHTML = '';
+          document.getElementById('topUpUserId').value = '';
+          document.getElementById('topUpAmount').value = '';
+          document.getElementById('topUpWalletType').selectedIndex = 0;
+          document.getElementById('topUpNotes').value = '';
+          var errorDiv = document.getElementById('topUpErrorMsg');
+          if (errorDiv) errorDiv.remove();
+        });
+      }
+    });
+  </script>
+  <!-- Always set user ID in Top Up modal when shown -->
+  <script>
+    // Always set user ID and info in Top Up modal when shown
+    var topUpModal = document.getElementById('topUpModal');
+    if (topUpModal) {
+      topUpModal.addEventListener('show.bs.modal', function() {
+        if (window.currentUser && window.currentUser.id) {
+          document.getElementById('topUpUserId').value = window.currentUser.id;
+          var user = window.currentUser;
+          var userInfo = `
+            <div class="d-flex align-items-center mb-2">
+              <i class="bi bi-person-circle text-info me-2"></i>
+              <div>
+                <strong class="text-white">${user.username}</strong><br>
+                <small class="text-light">${user.email}</small>
+              </div>
+            </div>
+            <div class="alert alert-info mb-0 bg-info bg-opacity-20 border border-info">
+              <i class="bi bi-wallet2 me-2"></i>
+              <strong class="text-white">Current Balance:</strong> <span class="text-dark fw-bold">SOL ${parseFloat(user.available_balance || 0).toFixed(2)}</span>
+            </div>
+            <div class="alert alert-info mb-0 bg-info bg-opacity-20 border border-info mt-2">
+              <i class="bi bi-wallet2 me-2"></i>
+              <strong class="text-white">Withdrawable Balance:</strong> <span class="text-dark fw-bold">SOL ${parseFloat(user.withdrawable_balance || 0).toFixed(2)}</span>
+            </div>
+          `;
+          document.getElementById('topUpUserInfo').innerHTML = userInfo;
+        } else {
+          document.getElementById('topUpUserInfo').innerHTML = '<div class="alert alert-danger">No user selected. Please select a user first.</div>';
+          document.getElementById('topUpUserId').value = '';
+        }
+      });
+    }
+  </script>
+  <!-- Disable Top Up button unless a user is selected -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var topUpBtn = document.getElementById('topUpBtn');
+      if (topUpBtn) {
+        topUpBtn.disabled = true;
+        document.addEventListener('click', function(e) {
+          if (e.target.closest('.view-user-btn')) {
+            setTimeout(function() { topUpBtn.disabled = false; }, 300);
+          }
+        });
+        // Re-disable when user details modal is closed
+        var userDetailModal = document.getElementById('userDetailModal');
+        if (userDetailModal) {
+          userDetailModal.addEventListener('hidden.bs.modal', function() {
+            topUpBtn.disabled = true;
+          });
+        }
+      }
+
+      // If Top Up modal is opened without a user, close it and alert
+      var topUpModal = document.getElementById('topUpModal');
+      if (topUpModal) {
+        topUpModal.addEventListener('show.bs.modal', function(e) {
+          if (!window.currentUser || !window.currentUser.id) {
+            e.preventDefault();
+            var alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-danger position-fixed top-0 start-50 translate-middle-x mt-3';
+            alertDiv.style.zIndex = 9999;
+            alertDiv.textContent = 'No user selected. Please select a user first.';
+            document.body.appendChild(alertDiv);
+            setTimeout(function() { alertDiv.remove(); }, 3000);
           }
         });
       }

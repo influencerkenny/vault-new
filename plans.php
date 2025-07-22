@@ -8,6 +8,11 @@ require_once __DIR__ . '/api/settings_helper.php';
 $pdo = new PDO('mysql:host=localhost;dbname=vault_db', 'root', '');
 $user_id = $_SESSION['user_id'];
 $success = $error = '';
+// Fetch user info
+$stmt = $pdo->prepare('SELECT first_name, last_name, email, avatar, username FROM users WHERE id = ?');
+$stmt->execute([$user_id]);
+$user = $stmt->fetch(PDO::FETCH_ASSOC);
+$avatar = !empty($user['avatar']) ? $user['avatar'] : 'public/placeholder-user.jpg';
 // Fetch user available balance for modal display
 $stmt = $pdo->prepare('SELECT available_balance FROM user_balances WHERE user_id = ?');
 $stmt->execute([$user_id]);
@@ -16,65 +21,74 @@ if ($user_balance === false) $user_balance = 0.00;
 // Handle staking (classic POST or AJAX)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['stake_plan_id'])) {
   $plan_id = (int)$_POST['stake_plan_id'];
-  $amount = (float)$_POST['stake_amount'];
-  $response = ['success' => false, 'error' => '', 'new_balance' => null];
-  // Fetch plan
-  $stmt = $pdo->prepare('SELECT * FROM plans WHERE id=? AND status="active"');
-  $stmt->execute([$plan_id]);
-  $plan = $stmt->fetch(PDO::FETCH_ASSOC);
-  if (!$plan) {
-    $error = 'Invalid plan selected.';
-    $response['error'] = $error;
-  } else if ($amount < $plan['min_investment'] || $amount > $plan['max_investment']) {
-    $error = 'Amount must be between the plan minimum and maximum.';
+  $amount = $_POST['stake_amount'];
+  if (!is_numeric($amount) || $amount <= 0) {
+    $error = 'Invalid amount. Please enter a valid number greater than zero.';
     $response['error'] = $error;
   } else {
-    // Check user available balance
-    $stmt = $pdo->prepare('SELECT available_balance FROM user_balances WHERE user_id = ?');
-    $stmt->execute([$user_id]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    $user_balance = $row ? (float)$row['available_balance'] : 0.00;
-    if ($amount > $user_balance) {
-      $error = 'Insufficient available balance.';
+    $amount = (float)$amount;
+    $response = ['success' => false, 'error' => '', 'new_balance' => null];
+    // Fetch plan
+    $stmt = $pdo->prepare('SELECT * FROM plans WHERE id=? AND status="active"');
+    $stmt->execute([$plan_id]);
+    $plan = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$plan) {
+      $error = 'Invalid plan selected.';
+      $response['error'] = $error;
+    } else if ($amount < $plan['min_investment'] || $amount > $plan['max_investment']) {
+      $error = 'Amount must be between the plan minimum and maximum.';
       $response['error'] = $error;
     } else {
-      $start = date('Y-m-d H:i:s');
-      $stmt = $pdo->prepare('INSERT INTO user_stakes (user_id, plan_id, amount, status, started_at) VALUES (?, ?, ?, "active", ?)');
-      if ($stmt->execute([$user_id, $plan_id, $amount, $start])) {
-        // Insert into transactions table for investment
-        $desc = 'Staked in plan: ' . ($plan['name'] ?? ('Plan #' . $plan_id));
-        $stmt2 = $pdo->prepare('INSERT INTO transactions (user_id, type, amount, status, description, created_at) VALUES (?, "investment", ?, "completed", ?, ?)');
-        $stmt2->execute([$user_id, $amount, $desc, $start]);
-        // Deduct from user balance
-        $stmt = $pdo->prepare('UPDATE user_balances SET available_balance = available_balance - ? WHERE user_id = ?');
-        $stmt->execute([$amount, $user_id]);
-        // Get new balance
-        $stmt = $pdo->prepare('SELECT available_balance FROM user_balances WHERE user_id = ?');
-        $stmt->execute([$user_id]);
-        $new_balance = (float)($stmt->fetch(PDO::FETCH_ASSOC)['available_balance'] ?? 0);
-        $success = 'Staking successful!';
-        $response['success'] = true;
-        $response['new_balance'] = $new_balance;
-        // Send staking confirmation email
-        $template = get_setting('email_template_staking');
-        $replacements = [
-            '{USER_NAME}' => $user['first_name'] . ' ' . $user['last_name'],
-            '{AMOUNT}' => $amount,
-            '{PLAN_NAME}' => $plan['name'],
-            '{DATE}' => $start,
-        ];
-        $body = strtr($template, $replacements);
-        $subject = 'Staking Confirmation';
-        $headers = "MIME-Version: 1.0\r\nContent-type:text/html;charset=UTF-8\r\n";
-        mail($user['email'], $subject, $body, $headers);
-      } else {
-        $error = 'Failed to stake in plan.';
+      // Check user available balance
+      $stmt = $pdo->prepare('SELECT available_balance FROM user_balances WHERE user_id = ?');
+      $stmt->execute([$user_id]);
+      $row = $stmt->fetch(PDO::FETCH_ASSOC);
+      $user_balance = $row ? (float)$row['available_balance'] : 0.00;
+      if ($amount > $user_balance) {
+        $error = 'Insufficient available balance.';
         $response['error'] = $error;
+      } else {
+        $start = date('Y-m-d H:i:s');
+        $stmt = $pdo->prepare('INSERT INTO user_stakes (user_id, plan_id, amount, status, started_at) VALUES (?, ?, ?, "active", ?)');
+        if ($stmt->execute([$user_id, $plan_id, $amount, $start])) {
+          // Insert into transactions table for investment
+          $desc = 'Staked in plan: ' . ($plan['name'] ?? ('Plan #' . $plan_id));
+          $stmt2 = $pdo->prepare('INSERT INTO transactions (user_id, type, amount, status, description, created_at) VALUES (?, "investment", ?, "completed", ?, ?)');
+          $stmt2->execute([$user_id, $amount, $desc, $start]);
+          // Deduct from user balance
+          $stmt = $pdo->prepare('UPDATE user_balances SET available_balance = available_balance - ? WHERE user_id = ?');
+          $stmt->execute([$amount, $user_id]);
+          // Get new balance
+          $stmt = $pdo->prepare('SELECT available_balance FROM user_balances WHERE user_id = ?');
+          $stmt->execute([$user_id]);
+          $new_balance = (float)($stmt->fetch(PDO::FETCH_ASSOC)['available_balance'] ?? 0);
+          $success = 'Staking successful!';
+          $response['success'] = true;
+          $response['new_balance'] = $new_balance;
+          // Send staking confirmation email
+          $template = get_setting('email_template_staking');
+          $replacements = [
+              '{USER_NAME}' => $user['first_name'] . ' ' . $user['last_name'],
+              '{AMOUNT}' => $amount,
+              '{PLAN_NAME}' => $plan['name'],
+              '{DATE}' => $start,
+          ];
+          $body = strtr($template, $replacements);
+          $subject = 'Staking Confirmation';
+          $headers = "MIME-Version: 1.0\r\nContent-type:text/html;charset=UTF-8\r\n";
+          mail($user['email'], $subject, $body, $headers);
+        } else {
+          $pdoError = $stmt->errorInfo();
+          error_log('Failed to stake in plan: ' . print_r($pdoError, true));
+          $error = 'Failed to stake in plan.';
+          $response['error'] = $error;
+        }
       }
     }
   }
   // AJAX response
   if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+    if (ob_get_length()) ob_clean();
     header('Content-Type: application/json');
     echo json_encode($response);
     exit;
@@ -452,11 +466,14 @@ $total_pages = ceil($total_history / $limit);
           <div class="mb-3">
             <label for="stake_amount" class="form-label fw-semibold">Amount to Stake</label>
             <div class="input-group">
-              <input type="number" class="form-control bg-dark text-white border-0 rounded-start-3" id="stake_amount" name="stake_amount" min="0" step="0.01" required placeholder="Enter amount" disabled>
+              <input type="text" class="form-control bg-dark text-white border-0 rounded-start-3" id="stake_amount" name="stake_amount" required placeholder="Enter amount">
               <span class="input-group-text bg-dark text-info border-0 rounded-end-3">SOL</span>
             </div>
             <div class="form-text text-secondary" id="stakeRange"></div>
-            <div class="form-text text-warning">Available Balance: SOL <?=number_format($user_balance,2)?></div>
+            <div class="alert alert-info d-flex align-items-center py-2 px-3 mb-2" style="font-size:1.15rem; font-weight:600; border-radius:0.75rem;">
+              <i class="bi bi-wallet2 me-2"></i>Available Balance: <span id="modalAvailableBalance" class="ms-1 text-primary">SOL <?=number_format($user_balance,2)?></span>
+              <button type="button" id="refreshBalanceBtn" class="btn btn-sm btn-outline-primary ms-auto" title="Refresh Balance"><i class="bi bi-arrow-clockwise"></i></button>
+            </div>
             <div class="form-text text-info" id="expectedReturns"></div>
           </div>
         </div>
@@ -517,7 +534,6 @@ $total_pages = ceil($total_history / $limit);
         const min = parseFloat(selected.getAttribute('data-min'));
         const max = parseFloat(selected.getAttribute('data-max'));
         const lockin = parseInt(selected.getAttribute('data-lockin'));
-        amountInput.disabled = false;
         amountInput.min = min;
         amountInput.max = max;
         amountInput.value = '';
@@ -528,9 +544,10 @@ $total_pages = ceil($total_history / $limit);
       amountInput.addEventListener('input', function() {
         if (!selectedPlan) return;
         let val = parseFloat(this.value);
-        if (isNaN(val)) val = 0;
-        if (val > selectedPlan.max) this.value = selectedPlan.max;
-        if (val < selectedPlan.min) this.value = selectedPlan.min;
+        if (isNaN(val) || val <= 0) {
+          expectedReturns.textContent = '';
+          return;
+        }
         if (val && selectedPlan.lockin) {
           const total = val * (0.01) * selectedPlan.lockin; // Assuming daily ROI is 1% for simplicity in JS
           expectedReturns.textContent = `Expected Earnings: SOL ${total.toFixed(2)} (${selectedPlan.lockin} days)`;
@@ -544,12 +561,16 @@ $total_pages = ceil($total_history / $limit);
     if (stakeForm) {
       stakeForm.addEventListener('submit', function(e) {
         e.preventDefault();
-        const formData = new FormData(stakeForm);
         const btn = stakeForm.querySelector('button[type=submit]');
+        // Prevent double submission
+        if (btn.disabled) return;
         btn.disabled = true;
+        const originalBtnHtml = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processing...';
         // Remove previous alerts
         if (document.getElementById('stakeSuccess')) document.getElementById('stakeSuccess').remove();
         if (document.getElementById('stakeError')) document.getElementById('stakeError').remove();
+        const formData = new FormData(stakeForm);
         fetch(window.location.href, {
           method: 'POST',
           body: formData,
@@ -589,7 +610,10 @@ $total_pages = ceil($total_history / $limit);
           alert.textContent = 'Failed to stake.';
           stakeForm.querySelector('.modal-body').prepend(alert);
         })
-        .finally(() => { btn.disabled = false; });
+        .finally(() => {
+          btn.disabled = false;
+          btn.innerHTML = originalBtnHtml;
+        });
       });
     }
     // Pagination for staking history
@@ -625,6 +649,30 @@ $total_pages = ceil($total_history / $limit);
       console.error('JS Error:', e.message, e);
     });
   </script>
+  <script>
+document.getElementById('refreshBalanceBtn').addEventListener('click', function() {
+  var btn = this;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+  fetch('api/update_user_balance.php', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'get_balance' })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success && data.balance) {
+      document.getElementById('modalAvailableBalance').textContent = 'SOL ' + parseFloat(data.balance.available_balance).toFixed(2);
+    }
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-arrow-clockwise"></i>';
+  })
+  .catch(() => {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-arrow-clockwise"></i>';
+  });
+});
+</script>
   <script src="public/sidebar-toggle.js" defer></script>
 </body>
 </html> 

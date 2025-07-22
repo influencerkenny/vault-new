@@ -1,5 +1,5 @@
 <?php
-require_once '../api/config.php';
+require_once __DIR__ . '/../api/config.php';
 
 // 1. Drop today's profit for all active stakes
 $stmt = $pdo->query("

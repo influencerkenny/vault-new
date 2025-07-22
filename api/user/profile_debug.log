@@ -96,3 +96,102 @@ About to update: Array
     [3] => public/avatars/avatar_687ed2b194c6d.png
     [4] => 1
 )
+Array
+(
+    [user_id] => 1
+    [first_name] => Parres
+    [last_name] => Mia
+    [email] => awanews5@gmail.com
+    [avatar_url] => 
+    [avatar_file] => Array
+        (
+            [name] => IMG_7740-removebg-preview.png
+            [type] => image/png
+            [tmp_name] => C:\xampp\tmp\php7753.tmp
+            [error] => 0
+            [size] => 189534
+        )
+
+    [session] => Array
+        (
+            [user_id] => 1
+            [admin_logged_in] => 1
+        )
+
+)
+dest=C:\xampp\htdocs\vault-new/public/avatars/avatar_687fd88be1159.png, dirExists=yes, dirWritable=yes
+move_uploaded_file: tmp=C:\xampp\tmp\php7753.tmp, dest=C:\xampp\htdocs\vault-new/public/avatars/avatar_687fd88be1159.png, result=success
+About to update: Array
+(
+    [0] => Parres
+    [1] => Mia
+    [2] => awanews5@gmail.com
+    [3] => public/avatars/avatar_687fd88be1159.png
+    [4] => 1
+)
+Array
+(
+    [user_id] => 1
+    [first_name] => Parres
+    [last_name] => Mia
+    [email] => awanews5@gmail.com
+    [avatar_url] => 
+    [avatar_file] => Array
+        (
+            [name] => IMG_7740-removebg-preview.png
+            [type] => image/png
+            [tmp_name] => C:\xampp\tmp\phpD2DD.tmp
+            [error] => 0
+            [size] => 189534
+        )
+
+    [session] => Array
+        (
+            [user_id] => 1
+            [admin_logged_in] => 1
+        )
+
+)
+dest=C:\xampp\htdocs\vault-new/public/avatars/avatar_687fd8e4dc639.png, dirExists=yes, dirWritable=yes
+move_uploaded_file: tmp=C:\xampp\tmp\phpD2DD.tmp, dest=C:\xampp\htdocs\vault-new/public/avatars/avatar_687fd8e4dc639.png, result=success
+About to update: Array
+(
+    [0] => Parres
+    [1] => Mia
+    [2] => awanews5@gmail.com
+    [3] => public/avatars/avatar_687fd8e4dc639.png
+    [4] => 1
+)
+Array
+(
+    [user_id] => 4
+    [first_name] => Kenny
+    [last_name] => Ogboma
+    [email] => kenny@gmail.com
+    [avatar_url] => 
+    [avatar_file] => Array
+        (
+            [name] => WhatsApp Image 2025-07-22 at 21.04.36_86076280.jpg
+            [type] => image/jpeg
+            [tmp_name] => C:\xampp\tmp\php98CC.tmp
+            [error] => 0
+            [size] => 36457
+        )
+
+    [session] => Array
+        (
+            [user_id] => 4
+            [admin_logged_in] => 1
+        )
+
+)
+dest=C:\xampp\htdocs\vault-new/public/avatars/avatar_6880199a9b861.jpg, dirExists=yes, dirWritable=yes
+move_uploaded_file: tmp=C:\xampp\tmp\php98CC.tmp, dest=C:\xampp\htdocs\vault-new/public/avatars/avatar_6880199a9b861.jpg, result=success
+About to update: Array
+(
+    [0] => Kenny
+    [1] => Ogboma
+    [2] => kenny@gmail.com
+    [3] => public/avatars/avatar_6880199a9b861.jpg
+    [4] => 4
+)

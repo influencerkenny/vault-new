@@ -145,7 +145,6 @@ $twofa_enabled = $user_twofa ? (int)$user_twofa['twofa_enabled'] : 0;
           <i class="bi bi-list" style="font-size:1.7rem;"></i>
         </button>
         <img src="/vault-logo-new.png" alt="Vault Logo" class="logo me-3">
-        <a href="/" class="back-link"><i class="bi bi-arrow-left"></i> Back to Home</a>
       </div>
       <div><!-- Wallet connection placeholder -->
         <div class="dropdown">

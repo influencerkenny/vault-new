@@ -184,6 +184,30 @@ CREATE TABLE IF NOT EXISTS user_stake_profits (
   FOREIGN KEY (stake_id) REFERENCES user_stakes(id) ON DELETE CASCADE
 );
 
+-- Support Tickets Table
+CREATE TABLE IF NOT EXISTS support_tickets (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  subject VARCHAR(255) NOT NULL,
+  message TEXT NOT NULL,
+  file VARCHAR(255),
+  status ENUM('open','closed') DEFAULT 'open',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Support Replies Table
+CREATE TABLE IF NOT EXISTS support_replies (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  ticket_id INT NOT NULL,
+  user_id INT, -- NULL if admin reply, or use a separate admin_id if needed
+  message TEXT NOT NULL,
+  file VARCHAR(255),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (ticket_id) REFERENCES support_tickets(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
 -- Sample Data Inserts
 INSERT INTO admins (username, email, password_hash) VALUES (
   'admin',

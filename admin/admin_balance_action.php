@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Validate inputs
     if ($user_id <= 0 || $amount <= 0) {
         $action_error = 'Invalid user ID or amount.';
-    } elseif (!in_array($wallet_type, ['deposit', 'interest'])) {
+    } elseif (!in_array($wallet_type, ['deposit', 'interest', 'withdrawable'])) {
         $action_error = 'Invalid wallet type.';
     } else {
         try {
@@ -54,12 +54,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Add to deposits by creating a deposit transaction
                     $stmt = $pdo->prepare('INSERT INTO transactions (user_id, type, amount, description, status, created_at) VALUES (?, ?, ?, ?, ?, NOW())');
                     $stmt->execute([$user_id, 'deposit', $amount, "Admin Top Up - $wallet_type", 'completed']);
-                } else {
+                } else if ($wallet_type === 'interest') {
                     // Add to rewards by creating a reward record
                     $stmt = $pdo->prepare('INSERT INTO user_rewards (user_id, amount, type, description, created_at) VALUES (?, ?, ?, ?, NOW())');
                     $stmt->execute([$user_id, $amount, 'admin_credit', "Admin Top Up - $wallet_type"]);
+                } else if ($wallet_type === 'withdrawable') {
+                    // Add to withdrawable balance
+                    $stmt = $pdo->prepare('UPDATE user_balances SET withdrawable_balance = withdrawable_balance + ? WHERE user_id = ?');
+                    $stmt->execute([$amount, $user_id]);
                 }
-                
                 // Update available balance
                 $stmt = $pdo->prepare('INSERT INTO user_balances (user_id, available_balance) VALUES (?, ?) ON DUPLICATE KEY UPDATE available_balance = available_balance + ?');
                 $stmt->execute([$user_id, $amount, $amount]);
@@ -67,6 +70,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Deduct from available balance
                 $stmt = $pdo->prepare('UPDATE user_balances SET available_balance = GREATEST(0, available_balance - ?) WHERE user_id = ?');
                 $stmt->execute([$amount, $user_id]);
+                if ($wallet_type === 'withdrawable') {
+                    $stmt = $pdo->prepare('UPDATE user_balances SET withdrawable_balance = GREATEST(0, withdrawable_balance - ?) WHERE user_id = ?');
+                    $stmt->execute([$amount, $user_id]);
+                }
             }
             
             // Send notification to user

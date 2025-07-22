@@ -40,6 +40,13 @@ $stmt->bindValue(2, $perPage, PDO::PARAM_INT);
 $stmt->bindValue(3, $offset, PDO::PARAM_INT);
 $stmt->execute();
 $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+// Handle clear messages action
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['clear_notifications'])) {
+  $stmt = $pdo->prepare('UPDATE notifications SET is_read = 1 WHERE user_id = ?');
+  $stmt->execute([$user_id]);
+  header('Location: notifications.php');
+  exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -185,7 +192,12 @@ $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <main class="flex-grow-1 p-4">
       <div class="dashboard-content-wrapper mx-auto" style="max-width: 900px; width: 100%; padding: 0 1rem; display: flex; align-items: flex-start; justify-content: center; min-height: 100vh;">
         <div class="w-100">
-          <h3 class="mb-4 text-info fw-bold">Notifications</h3>
+          <h3 class="mb-4 text-info fw-bold d-flex justify-content-between align-items-center">
+            <span>Notifications</span>
+            <form method="post" class="mb-0">
+              <button type="submit" name="clear_notifications" class="btn btn-sm btn-outline-info"><i class="bi bi-check2-all me-1"></i>Clear Messages</button>
+            </form>
+          </h3>
           <div class="table-responsive">
             <table class="table notifications-table align-middle mb-0">
               <thead>

@@ -339,5 +339,19 @@ function usdt_placeholder($amount) {
       }
     });
   </script>
+  <script>
+// Confirmation dialog before submitting deposit form
+document.addEventListener('DOMContentLoaded', function() {
+  var depositForm = document.getElementById('depositForm');
+  if (depositForm) {
+    depositForm.addEventListener('submit', function(e) {
+      if (!confirm('Are you sure you want to submit this deposit?')) {
+        e.preventDefault();
+        return false;
+      }
+    });
+  }
+});
+</script>
 </body>
 </html> 

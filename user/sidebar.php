@@ -13,6 +13,7 @@ $sidebarLinks = [
 ];
 ?>
 <div id="sidebar" class="sidebar d-none">
+  <button type="button" class="sidebar-close-btn" aria-label="Close sidebar" onclick="closeSidebar()" style="position:absolute;top:14px;right:14px;display:none;font-size:2rem;background:none;border:none;color:#fff;z-index:2100;line-height:1;cursor:pointer;">&times;</button>
   <div class="logo mb-4">
     <img src="/vault-logo-new.png" alt="Vault Logo" height="48">
   </div>
@@ -22,7 +23,7 @@ $sidebarLinks = [
     </a>
   <?php endforeach; ?>
   <form method="get" class="mt-auto">
-    <button type="submit" name="logout" class="logout-btn"><i class="bi bi-box-arrow-right"></i> Logout</button>
+    <a href="?logout=1" class="logout-btn"><i class="bi bi-box-arrow-right"></i> Logout</a>
   </form>
 </div>
 <div id="sidebarOverlay" class="sidebar-mobile-overlay"></div> 

@@ -39,7 +39,7 @@ $sidebarLinks = [
   ['href' => 'withdrawals.php', 'label' => 'Withdrawals', 'icon' => 'bi-upload'],
   ['href' => 'transactions.php', 'label' => 'Transactions', 'icon' => 'bi-list'],
   ['href' => 'referral.php', 'label' => 'Referral', 'icon' => 'bi-people'],
-  ['href' => 'settings.php', 'label' => 'Settings', 'icon' => 'bi-gear'],
+  ['href' => 'account-settings.php', 'label' => 'Settings', 'icon' => 'bi-gear'],
   ['href' => 'profile.php', 'label' => 'Profile', 'icon' => 'bi-person'],
   ['href' => 'support.php', 'label' => 'Support', 'icon' => 'bi-question-circle'],
 ];
@@ -100,7 +100,32 @@ function usdt_placeholder($amount) {
   </style>
 </head>
 <body>
-  <?php include 'user/sidebar.php'; ?>
+  <!-- Sidebar -->
+  <div id="sidebar" class="sidebar">
+    <div class="logo mb-4">
+      <img src="/vault-logo-new.png" alt="Vault Logo" height="48" loading="lazy">
+    </div>
+    <?php
+    $sidebarLinks = [
+      ['href' => 'user-dashboard.php', 'label' => 'Dashboard', 'icon' => 'bi-house'],
+      ['href' => 'plans.php', 'label' => 'Plans', 'icon' => 'bi-layers'],
+      ['href' => 'deposits.php', 'label' => 'Deposits', 'icon' => 'bi-download'],
+      ['href' => 'withdrawals.php', 'label' => 'Withdrawals', 'icon' => 'bi-upload'],
+      ['href' => 'transactions.php', 'label' => 'Transactions', 'icon' => 'bi-list'],
+      ['href' => 'referral.php', 'label' => 'Referral', 'icon' => 'bi-people'],
+      ['href' => 'settings.php', 'label' => 'Settings', 'icon' => 'bi-gear'],
+      ['href' => 'profile.php', 'label' => 'Profile', 'icon' => 'bi-person'],
+      ['href' => 'support.php', 'icon' => 'bi-question-circle', 'label' => 'Support'],
+    ];
+    foreach ($sidebarLinks as $link): ?>
+      <a href="<?=$link['href']?>" class="nav-link<?=basename($_SERVER['PHP_SELF']) === basename($link['href']) ? ' active' : ''?>">
+        <i class="bi <?=$link['icon']?>"></i> <?=$link['label']?>
+      </a>
+    <?php endforeach; ?>
+    <form method="get" class="mt-auto">
+      <button type="submit" name="logout" class="logout-btn"><i class="bi bi-box-arrow-right"></i> Logout</button>
+    </form>
+  </div>
   <div class="main-content">
     <?php include 'user/header.php'; ?>
     <main class="flex-grow-1 p-4">
@@ -158,7 +183,14 @@ function usdt_placeholder($amount) {
         </div>
       </div>
     </main>
-    <?php include 'user/footer.php'; ?>
+    <footer class="dashboard-footer text-center d-flex flex-column align-items-center justify-content-center" style="border-top: 1px solid #1e293b; padding: 2rem; background: rgba(17,24,39,0.85); color: #a1a1aa; margin-top: auto;">
+      <img src="/vault-logo-new.png" alt="Vault Logo" height="32" class="mb-2 mx-auto">
+      <div class="mb-2">
+        <a href="plans.php" class="text-info me-3">Staking Plans</a>
+        <a href="roadmap.php" class="text-info">Roadmap</a>
+      </div>
+      <div>&copy; <?=date('Y')?> Vault. All rights reserved.</div>
+    </footer>
   </div>
   <script>
     function copyReferralLink() {

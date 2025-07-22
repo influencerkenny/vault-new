@@ -102,6 +102,7 @@ function usdt_placeholder($amount) {
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
   <style>
     body { font-family: 'Inter', sans-serif; background: #0f172a; color: #e5e7eb; }
+    body.no-scroll { overflow: hidden !important; }
     .sidebar {
       background: rgba(10,16,30,0.95);
       border-right: 1px solid #1e293b;
@@ -234,54 +235,87 @@ function usdt_placeholder($amount) {
     .dashboard-widgets {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 1.5rem;
+      gap: 2rem;
       margin: 2.5rem 0 2rem 0;
       padding: 0 2rem;
     }
     .dashboard-widget {
-      background: linear-gradient(135deg, #2563eb22 0%, #0ea5e922 100%);
-      border: 1px solid #2563eb33;
-      border-radius: 1.25rem;
-      padding: 2rem 1.5rem 1.5rem 1.5rem;
-      box-shadow: 0 6px 32px 0 rgba(37,99,235,0.10), 0 1.5px 8px 0 rgba(31,41,55,0.10);
+      background: rgba(30,41,59,0.85);
+      border: 1.5px solid #2563eb33;
+      border-radius: 1.5rem;
+      padding: 2.2rem 1.7rem 1.7rem 1.7rem;
+      box-shadow: 0 8px 32px 0 rgba(37,99,235,0.13), 0 2px 12px 0 rgba(31,41,55,0.13);
       color: #e5e7eb;
       position: relative;
-      min-height: 160px;
+      min-height: 170px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      transition: box-shadow 0.2s, border 0.2s, background 0.2s;
+      transition: box-shadow 0.22s, border 0.22s, background 0.22s, transform 0.18s;
       overflow: hidden;
+      backdrop-filter: blur(8px) saturate(1.2);
+      cursor: pointer;
+    }
+    .dashboard-widget:hover, .dashboard-widget:focus {
+      box-shadow: 0 12px 40px 0 rgba(37,99,235,0.18), 0 4px 16px 0 rgba(31,41,55,0.16);
+      border: 1.5px solid #38bdf8;
+      background: rgba(30,41,59,0.97);
+      transform: translateY(-4px) scale(1.025);
     }
     .dashboard-widget .widget-title {
-      font-size: 1.08rem;
+      font-size: 1.13rem;
       color: #a1a1aa;
-      font-weight: 600;
-      margin-bottom: 0.5rem;
+      font-weight: 700;
+      margin-bottom: 0.7rem;
       letter-spacing: 0.01em;
+      text-shadow: 0 1px 2px #0002;
     }
     .dashboard-widget .widget-value {
-      font-size: 2.3rem;
-      font-weight: 800;
+      font-size: 2.6rem;
+      font-weight: 900;
       color: #fff;
       margin-bottom: 0.5rem;
       letter-spacing: 0.01em;
+      text-shadow: 0 2px 8px #2563eb22;
+      transition: color 0.18s;
+      animation: widgetCounter 1.2s cubic-bezier(.23,1.12,.77,1.12);
+    }
+    @keyframes widgetCounter {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
     }
     .dashboard-widget .widget-icon {
-      font-size: 2.6rem;
-      margin-bottom: 0.5rem;
-      border-radius: 0.75rem;
-      padding: 0.5rem;
-      box-shadow: 0 2px 8px 0 rgba(59,130,246,0.10);
+      font-size: 2.9rem;
+      margin-bottom: 0.7rem;
+      border-radius: 1rem;
+      padding: 0.7rem;
+      box-shadow: 0 2px 12px 0 rgba(59,130,246,0.13);
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      background: linear-gradient(135deg, #2563eb 0%, #38bdf8 100%);
+      color: #fff;
+      filter: drop-shadow(0 2px 8px #2563eb33);
+      transition: background 0.18s, color 0.18s, box-shadow 0.18s;
     }
-    .dashboard-widget.users .widget-icon { background: linear-gradient(90deg, #2563eb 0%, #38bdf8 100%); color: #fff; }
-    .dashboard-widget.deposits .widget-icon { background: linear-gradient(90deg, #22c55e 0%, #38bdf8 100%); color: #fff; }
-    .dashboard-widget.withdrawals .widget-icon { background: linear-gradient(90deg, #ef4444 0%, #fbbf24 100%); color: #fff; }
-    .dashboard-widget.pending .widget-icon { background: linear-gradient(90deg, #fbbf24 0%, #f59e42 100%); color: #fff; }
-    .dashboard-widget.staked .widget-icon { background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%); color: #fff; }
+    .dashboard-widget.users .widget-icon { background: linear-gradient(90deg, #2563eb 0%, #38bdf8 100%); }
+    .dashboard-widget.deposits .widget-icon { background: linear-gradient(90deg, #22c55e 0%, #38bdf8 100%); }
+    .dashboard-widget.withdrawals .widget-icon { background: linear-gradient(90deg, #ef4444 0%, #fbbf24 100%); }
+    .dashboard-widget.pending .widget-icon { background: linear-gradient(90deg, #fbbf24 0%, #f59e42 100%); }
+    .dashboard-widget.staked .widget-icon { background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%); }
+    .dashboard-widget .widget-footer {
+      font-size: 0.98rem;
+      color: #60a5fa;
+      margin-top: 0.7rem;
+      opacity: 0.85;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+    }
+    .dashboard-widget .widget-footer i { font-size: 1.1em; }
+    .dashboard-widget .widget-value .usdt-convert { font-size: 0.55em; color: #94a3b8; margin-top: 0.1em; display: block; }
     .footer {
       background: rgba(17,24,39,0.95);
       color: #64748b;
@@ -295,25 +329,25 @@ function usdt_placeholder($amount) {
       .sidebar { left: -260px; min-width: 220px; max-width: 220px; }
       .sidebar.open { left: 0; }
       .main-content { margin-left: 0; }
-      .dashboard-widgets { padding: 0 0.5rem; }
+      .dashboard-widgets { padding: 0 0.5rem; gap: 1.2rem; }
     }
     @media (max-width: 575px) {
       .dashboard-header { padding: 1rem 0.5rem; }
-      .dashboard-widgets { padding: 0 0.25rem; }
+      .dashboard-widgets {
+        padding: 0 0.15rem;
+        gap: 0.7rem;
+        grid-template-columns: 1fr !important;
+      }
       .dashboard-widget {
-        padding: 1rem 0.75rem 0.75rem 0.75rem;
-        min-height: 100px;
+        padding: 0.7rem 0.3rem 0.5rem 0.3rem;
+        min-height: 60px;
+        border-radius: 1rem;
+        width: 100%;
       }
-      .dashboard-widget .widget-title {
-        font-size: 0.98rem;
-      }
-      .dashboard-widget .widget-value {
-        font-size: 1.3rem;
-      }
-      .dashboard-widget .widget-icon {
-        font-size: 1.5rem;
-        padding: 0.35rem;
-      }
+      .dashboard-widget .widget-title { font-size: 0.89rem; margin-bottom: 0.4rem; }
+      .dashboard-widget .widget-value { font-size: 1.05rem; margin-bottom: 0.3rem; }
+      .dashboard-widget .widget-icon { font-size: 1.05rem; padding: 0.18rem; margin-bottom: 0.3rem; border-radius: 0.6rem; }
+      .dashboard-widget .widget-footer { font-size: 0.85rem; margin-top: 0.3rem; }
     }
     .chart-card {
       box-shadow: 0 6px 32px 0 rgba(37,99,235,0.10), 0 1.5px 8px 0 rgba(31,41,55,0.10);
@@ -365,30 +399,35 @@ function usdt_placeholder($amount) {
     </div>
   </div>
   <div class="dashboard-widgets">
-    <div class="dashboard-widget users">
+    <div class="dashboard-widget users" tabindex="0">
       <div class="widget-icon"><i class="bi bi-people"></i></div>
       <div class="widget-title">Total Users</div>
       <div class="widget-value"><?=$totalUsers?></div>
+      <div class="widget-footer"><i class="bi bi-arrow-up-right-circle"></i> Active users growth</div>
     </div>
-    <div class="dashboard-widget deposits">
+    <div class="dashboard-widget deposits" tabindex="0">
       <div class="widget-icon"><i class="bi bi-download"></i></div>
       <div class="widget-title">Total Deposits</div>
       <div class="widget-value"><?=sol_display($totalDeposits)?><?=usdt_placeholder($totalDeposits)?></div>
+      <div class="widget-footer"><i class="bi bi-bar-chart-line"></i> All-time completed deposits</div>
     </div>
-    <div class="dashboard-widget withdrawals">
+    <div class="dashboard-widget withdrawals" tabindex="0">
       <div class="widget-icon"><i class="bi bi-upload"></i></div>
       <div class="widget-title">Total Withdrawals</div>
       <div class="widget-value"><?=sol_display($totalWithdrawals)?><?=usdt_placeholder($totalWithdrawals)?></div>
+      <div class="widget-footer"><i class="bi bi-cash-coin"></i> All-time completed withdrawals</div>
     </div>
-    <div class="dashboard-widget staked">
+    <div class="dashboard-widget staked" tabindex="0">
       <div class="widget-icon"><i class="bi bi-piggy-bank"></i></div>
       <div class="widget-title">Total Staked</div>
       <div class="widget-value"><?=sol_display($totalStaked)?><?=usdt_placeholder($totalStaked)?></div>
+      <div class="widget-footer"><i class="bi bi-pie-chart"></i> Active user stakes</div>
     </div>
-    <div class="dashboard-widget pending">
+    <div class="dashboard-widget pending" tabindex="0">
       <div class="widget-icon"><i class="bi bi-clock-history"></i></div>
       <div class="widget-title">Pending Transactions</div>
       <div class="widget-value"><?=$pendingTx?></div>
+      <div class="widget-footer"><i class="bi bi-hourglass-split"></i> Awaiting admin action</div>
     </div>
   </div>
   <div class="dashboard-charts row g-4 px-3 pb-4">
@@ -656,10 +695,12 @@ setInterval(updateSolToUsdt, 300000);
   function openSidebar() {
     sidebar.classList.add('open');
     sidebarOverlay.classList.add('active');
+    document.body.classList.add('no-scroll');
   }
   function closeSidebar() {
     sidebar.classList.remove('open');
     sidebarOverlay.classList.remove('active');
+    document.body.classList.remove('no-scroll');
   }
   if (sidebarToggle) {
     sidebarToggle.addEventListener('click', openSidebar);
@@ -674,6 +715,7 @@ setInterval(updateSolToUsdt, 300000);
     if (window.innerWidth >= 992) {
       sidebar.classList.remove('open');
       sidebarOverlay.classList.remove('active');
+      document.body.classList.remove('no-scroll');
     }
   });
 </script>

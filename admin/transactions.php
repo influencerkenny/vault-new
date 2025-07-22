@@ -122,6 +122,26 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
     @media (max-width: 991px) { .main-content { margin-left: 0; } .dashboard-content-wrapper { max-width: 100vw; margin: 0; padding: 0 0.3rem; font-size: 0.89rem; } }
     @media (max-width: 767px) { .dashboard-content-wrapper { padding: 0 0.1rem; font-size: 0.87rem; } }
     @media (max-width: 575px) { .dashboard-content-wrapper { padding: 0 0.05rem; font-size: 0.85rem; } .transactions-table { font-size: 0.87em; } .transactions-table th, .transactions-table td { padding: 0.35rem 0.18rem; font-size: 0.87em; } }
+    .tx-action-popover-menu {
+      z-index: 1055 !important;
+      animation: fadeInPopover 0.22s cubic-bezier(.4,0,.2,1);
+      outline: none;
+      left: 50%;
+      transform: translate(-50%, -110%);
+      right: auto;
+      bottom: auto;
+      min-width: 140px;
+      position: absolute;
+      background: #181f2a;
+      box-shadow: 0 2px 12px #0003;
+      border-radius: 0.75rem;
+      padding: 0.5rem 0.7rem;
+      display: none;
+    }
+    @keyframes fadeInPopover {
+      from { opacity: 0; transform: translateY(10px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
   </style>
 </head>
 <body>
@@ -205,11 +225,18 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
                 <td><?=htmlspecialchars($tx['description'])?></td>
                 <td>
                   <?php if ($tx['status'] === 'pending'): ?>
-                  <form method="post" style="display:inline-block;">
-                    <input type="hidden" name="tx_id" value="<?=$tx['id']?>">
-                    <button type="submit" name="action" value="approve" class="btn btn-success btn-sm action-btn" onclick="return confirm('Approve this transaction?')"><i class="bi bi-check-circle"></i></button>
-                    <button type="submit" name="action" value="reject" class="btn btn-danger btn-sm action-btn" onclick="return confirm('Reject this transaction?')"><i class="bi bi-x-circle"></i></button>
-                  </form>
+                    <div class="position-relative d-inline-block">
+                      <button class="btn btn-sm btn-outline-info tx-action-popover-btn" type="button" data-tx-id="<?=$tx['id']?>" aria-haspopup="true" aria-expanded="false" aria-controls="txActionPopoverMenu<?=$tx['id']?>">
+                        Actions
+                      </button>
+                      <div class="tx-action-popover-menu" id="txActionPopoverMenu<?=$tx['id']?>" tabindex="-1" role="menu" aria-labelledby="txActionPopoverMenu<?=$tx['id']?>">
+                        <form method="post" style="display:inline-block;">
+                          <input type="hidden" name="tx_id" value="<?=$tx['id']?>">
+                          <button type="submit" name="action" value="approve" class="dropdown-item text-success bg-dark tx-action-item" onclick="return confirm('Approve this transaction?')" role="menuitem"><i class="bi bi-check-circle me-2"></i>Approve</button>
+                          <button type="submit" name="action" value="reject" class="dropdown-item text-danger bg-dark tx-action-item" onclick="return confirm('Reject this transaction?')" role="menuitem"><i class="bi bi-x-circle me-2"></i>Reject</button>
+                        </form>
+                      </div>
+                    </div>
                   <?php else: ?>
                     <span class="text-secondary">-</span>
                   <?php endif; ?>
@@ -233,5 +260,63 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
       </div>
     </main>
   </div>
+  <script>
+// Mini popover/modal for Transaction Actions
+const txActionBtns = document.querySelectorAll('.tx-action-popover-btn');
+txActionBtns.forEach(btn => {
+  btn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    const txId = this.getAttribute('data-tx-id');
+    const menu = document.getElementById('txActionPopoverMenu' + txId);
+    // Hide all other popovers
+    document.querySelectorAll('.tx-action-popover-menu').forEach(m => { if (m !== menu) m.style.display = 'none'; });
+    // Toggle this one
+    if (menu.style.display === 'block') {
+      menu.style.display = 'none';
+      btn.setAttribute('aria-expanded', 'false');
+    } else {
+      menu.style.display = 'block';
+      btn.setAttribute('aria-expanded', 'true');
+      menu.focus();
+      // Focus trap
+      const focusable = menu.querySelectorAll('button, [tabindex]:not([tabindex="-1"])');
+      if (focusable.length) focusable[0].focus();
+    }
+  });
+});
+// Hide popover when clicking outside
+window.addEventListener('click', function(e) {
+  if (!e.target.closest('.tx-action-popover-btn') && !e.target.closest('.tx-action-popover-menu')) {
+    document.querySelectorAll('.tx-action-popover-menu').forEach(m => m.style.display = 'none');
+    txActionBtns.forEach(btn => btn.setAttribute('aria-expanded', 'false'));
+  }
+});
+// Keyboard navigation and auto-close on action
+const txActionMenus = document.querySelectorAll('.tx-action-popover-menu');
+txActionMenus.forEach(menu => {
+  menu.addEventListener('keydown', function(e) {
+    const focusable = menu.querySelectorAll('button, [tabindex]:not([tabindex="-1"])');
+    const idx = Array.prototype.indexOf.call(focusable, document.activeElement);
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (idx < focusable.length - 1) focusable[idx + 1].focus();
+      else focusable[0].focus();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (idx > 0) focusable[idx - 1].focus();
+      else focusable[focusable.length - 1].focus();
+    } else if (e.key === 'Escape') {
+      menu.style.display = 'none';
+      txActionBtns.forEach(btn => btn.setAttribute('aria-expanded', 'false'));
+    }
+  });
+  // Auto-close on action
+  menu.querySelectorAll('form,button').forEach(el => {
+    el.addEventListener('click', function() {
+      setTimeout(() => { menu.style.display = 'none'; txActionBtns.forEach(btn => btn.setAttribute('aria-expanded', 'false')); }, 150);
+    });
+  });
+});
+</script>
 </body>
 </html> 

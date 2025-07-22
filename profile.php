@@ -121,7 +121,6 @@ $sidebarLinks = [
           <i class="bi bi-list" style="font-size:1.7rem;"></i>
         </button>
         <img src="/vault-logo-new.png" alt="Vault Logo" class="logo me-3">
-        <a href="/" class="back-link"><i class="bi bi-arrow-left"></i> Back to Home</a>
       </div>
       <div><!-- Wallet connection placeholder -->
         <div class="dropdown">
@@ -173,10 +172,6 @@ $sidebarLinks = [
           <div class="mb-3">
             <label for="avatar_file" class="form-label">Avatar Upload</label>
             <input type="file" class="form-control" id="avatar_file" name="avatar_file" accept="image/*">
-          </div>
-          <div class="mb-3">
-            <label for="avatar_url" class="form-label">Avatar URL</label>
-            <input type="url" class="form-control" id="avatar_url" name="avatar_url" value="<?=htmlspecialchars($user['avatar'])?>" placeholder="https://...">
           </div>
           <button type="submit" class="btn btn-primary w-100" name="profile_save">Save Profile</button>
         </form>
@@ -245,6 +240,10 @@ $sidebarLinks = [
           form.prepend(alert);
           if (data.avatar) {
             document.getElementById('profileAvatarImg').src = data.avatar + '?t=' + Date.now();
+            // Update all header avatars on the page
+            document.querySelectorAll('img[alt="Profile"]').forEach(function(img) {
+              img.src = data.avatar + '?t=' + Date.now();
+            });
           }
         } else {
           const alert = document.createElement('div');

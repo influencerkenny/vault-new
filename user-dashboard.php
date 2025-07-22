@@ -89,6 +89,11 @@ try {
   // Handle error if needed
 }
 
+// Fetch withdrawable balance from user_balances
+$stmt = $pdo->prepare('SELECT withdrawable_balance FROM user_balances WHERE user_id = ?');
+$stmt->execute([$_SESSION['user_id']]);
+$withdrawableBalance = (float)($stmt->fetchColumn() ?: 0);
+
 // Portfolio Change & APY (placeholder)
 $portfolioChange = 12.5;
 $apy = 12.8;
@@ -112,7 +117,7 @@ foreach (array_reverse($history) as $row) {
   $chartData[] = (float)$row['portfolio_value'];
 }
 // Fetch staking positions
-$stmt = $pdo->prepare('SELECT amount, status, plan_id, started_at, ended_at FROM user_stakes WHERE user_id = ? ORDER BY started_at DESC');
+$stmt = $pdo->prepare('SELECT us.amount, us.status, us.plan_id, us.started_at, us.ended_at, p.name AS plan_name, p.daily_roi FROM user_stakes us JOIN plans p ON us.plan_id = p.id WHERE us.user_id = ? ORDER BY us.started_at DESC');
 $stmt->execute([$_SESSION['user_id']]);
 $stakes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 // Fetch transaction history
@@ -494,11 +499,18 @@ function usdt_placeholder($amount) {
       color: #38bdf8;
       font-weight: 600;
     }
+    @media (max-width: 991px) {
+      .sidebar-close-btn { display: block !important; }
+    }
+    @media (min-width: 992px) {
+      .sidebar-close-btn { display: none !important; }
+    }
   </style>
 </head>
 <body>
   <!-- Sidebar -->
   <div id="sidebar" class="sidebar">
+    <button type="button" class="sidebar-close-btn d-lg-none" aria-label="Close sidebar" onclick="closeSidebar()" style="position:absolute;top:14px;right:14px;font-size:2rem;background:none;border:none;color:#fff;z-index:2100;line-height:1;cursor:pointer;display:none;">&times;</button>
     <div class="logo mb-4">
       <img src="/vault-logo-new.png" alt="Vault Logo" height="48">
     </div>
@@ -509,7 +521,7 @@ function usdt_placeholder($amount) {
       </a>
     <?php endforeach; ?>
     <form method="get" class="mt-auto">
-      <button type="submit" name="logout" class="logout-btn"><i class="bi bi-box-arrow-right"></i> Logout</button>
+      <a href="?logout=1" class="logout-btn"><i class="bi bi-box-arrow-right"></i> Logout</a>
     </form>
   </div>
   <!-- Mobile Sidebar Overlay (after sidebar) -->
@@ -652,9 +664,9 @@ function usdt_placeholder($amount) {
         <div class="col-12 col-lg-4">
           <div class="quick-links-widget h-100 d-flex flex-column align-items-center justify-content-center">
             <h5>Quick Links</h5>
-            <button type="button" class="btn btn-outline-info w-100 mb-2" data-bs-toggle="modal" data-bs-target="#depositModal"><i class="bi bi-download me-2"></i>Deposit</button>
-            <button type="button" class="btn btn-outline-info w-100 mb-2" data-bs-toggle="modal" data-bs-target="#withdrawModal"><i class="bi bi-upload me-2"></i>Withdraw</button>
-            <button type="button" class="btn btn-outline-info w-100" data-bs-toggle="modal" data-bs-target="#plansModal"><i class="bi bi-layers me-2"></i>View Plans</button>
+            <a href="deposits.php" class="btn btn-outline-info w-100 mb-2"><i class="bi bi-download me-2"></i>Deposit</a>
+            <a href="withdrawals.php" class="btn btn-outline-info w-100 mb-2"><i class="bi bi-upload me-2"></i>Withdraw</a>
+            <a href="plans.php" class="btn btn-outline-info w-100"><i class="bi bi-layers me-2"></i>View Plans</a>
           </div>
         </div>
       </div>
@@ -669,7 +681,8 @@ function usdt_placeholder($amount) {
                   <tr>
                     <th>Amount</th>
                     <th>Status</th>
-                    <th>Plan</th>
+                    <th>Plan Name</th>
+                    <th>Daily ROI (%)</th>
                     <th>Started</th>
                     <th>Ended</th>
                   </tr>
@@ -679,12 +692,13 @@ function usdt_placeholder($amount) {
                   <tr>
                     <td><?=sol_display($s['amount'])?><?=usdt_placeholder($s['amount'])?></td>
                     <td><span class="badge bg-<?=($s['status']==='active'?'success':($s['status']==='completed'?'secondary':'danger'))?> text-uppercase"><?=$s['status']?></span></td>
-                    <td><?=$s['plan_id']??'-'?></td>
+                    <td><?=htmlspecialchars($s['plan_name'] ?? '-')?></td>
+                    <td><?=htmlspecialchars($s['daily_roi'] ?? '-')?></td>
                     <td><?=date('M j, Y', strtotime($s['started_at']))?></td>
                     <td><?=$s['ended_at'] ? date('M j, Y', strtotime($s['ended_at'])) : '-'?></td>
                   </tr>
                   <?php endforeach; else: ?>
-                  <tr><td colspan="5" class="text-center text-muted">No staking positions</td></tr>
+                  <tr><td colspan="6" class="text-center text-muted">No staking positions</td></tr>
                   <?php endif; ?>
                 </tbody>
               </table>
@@ -830,6 +844,7 @@ function usdt_placeholder($amount) {
     var sidebar = document.getElementById('sidebar');
     var sidebarOverlay = document.getElementById('sidebarOverlay');
     var sidebarToggle = document.getElementById('sidebarToggle');
+    var sidebarCloseBtn = document.querySelector('.sidebar-close-btn');
     function openSidebar() {
       sidebar.classList.add('active');
       sidebarOverlay.classList.add('active');
@@ -843,6 +858,9 @@ function usdt_placeholder($amount) {
     }
     if (sidebarOverlay) {
       sidebarOverlay.addEventListener('click', closeSidebar);
+    }
+    if (sidebarCloseBtn) {
+      sidebarCloseBtn.addEventListener('click', closeSidebar);
     }
     document.querySelectorAll('.sidebar .nav-link').forEach(function(link) {
       link.addEventListener('click', function() { if (window.innerWidth < 992) closeSidebar(); });

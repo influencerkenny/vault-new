@@ -24,6 +24,7 @@
   .sidebar { left: -260px; }
   .sidebar.active { left: 0; }
   .main-content { margin-left: 0; }
+  .sidebar-close-btn { display: block !important; position: absolute; top: 14px; right: 14px; font-size: 2rem; background: none; border: none; color: #fff; z-index: 2100; line-height: 1; cursor: pointer; }
 }
 
 /* Overlay styles */
