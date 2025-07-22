@@ -30,3 +30,69 @@ About to update: Array
     [3] => public/avatars/avatar_6879fa4592caf.png
     [4] => 1
 )
+Array
+(
+    [user_id] => 1
+    [first_name] => Parres
+    [last_name] => Mia
+    [email] => awanews5@gmail.com
+    [avatar_url] => 
+    [avatar_file] => Array
+        (
+            [name] => IMG_7740-removebg-preview.png
+            [type] => image/png
+            [tmp_name] => C:\xampp\tmp\php56A2.tmp
+            [error] => 0
+            [size] => 189534
+        )
+
+    [session] => Array
+        (
+            [user_id] => 1
+            [admin_logged_in] => 1
+        )
+
+)
+dest=C:\xampp\htdocs\vault-new/public/avatars/avatar_687ecd818d260.png, dirExists=yes, dirWritable=yes
+move_uploaded_file: tmp=C:\xampp\tmp\php56A2.tmp, dest=C:\xampp\htdocs\vault-new/public/avatars/avatar_687ecd818d260.png, result=success
+About to update: Array
+(
+    [0] => Parres
+    [1] => Mia
+    [2] => awanews5@gmail.com
+    [3] => public/avatars/avatar_687ecd818d260.png
+    [4] => 1
+)
+Array
+(
+    [user_id] => 1
+    [first_name] => Parres
+    [last_name] => Mia
+    [email] => awanews5@gmail.com
+    [avatar_url] => 
+    [avatar_file] => Array
+        (
+            [name] => IMG_7740-removebg-preview.png
+            [type] => image/png
+            [tmp_name] => C:\xampp\tmp\php9A42.tmp
+            [error] => 0
+            [size] => 189534
+        )
+
+    [session] => Array
+        (
+            [user_id] => 1
+            [admin_logged_in] => 1
+        )
+
+)
+dest=C:\xampp\htdocs\vault-new/public/avatars/avatar_687ed2b194c6d.png, dirExists=yes, dirWritable=yes
+move_uploaded_file: tmp=C:\xampp\tmp\php9A42.tmp, dest=C:\xampp\htdocs\vault-new/public/avatars/avatar_687ed2b194c6d.png, result=success
+About to update: Array
+(
+    [0] => Parres
+    [1] => Mia
+    [2] => awanews5@gmail.com
+    [3] => public/avatars/avatar_687ed2b194c6d.png
+    [4] => 1
+)

@@ -178,55 +178,55 @@ $twofa_enabled = $user_twofa ? (int)$user_twofa['twofa_enabled'] : 0;
         <div class="col-12 col-md-6 col-lg-4">
           <div class="settings-card h-100">
             <h2 class="mb-4 text-center">Account Settings</h2>
-            <?php if ($success): ?><div class="alert alert-success" id="settingsSuccess"><?=$success?></div><?php endif; ?>
-            <?php if ($error): ?><div class="alert alert-danger" id="settingsError"><?=$error?></div><?php endif; ?>
-            <form id="settingsForm" method="post" autocomplete="off">
-              <div class="mb-3">
-                <label for="email" class="form-label">Email</label>
-                <input type="email" class="form-control" id="email" name="email" value="<?=htmlspecialchars($user['email'])?>" required>
+                <?php if ($success): ?><div class="alert alert-success" id="settingsSuccess"><?=$success?></div><?php endif; ?>
+                <?php if ($error): ?><div class="alert alert-danger" id="settingsError"><?=$error?></div><?php endif; ?>
+                <form id="settingsForm" method="post" autocomplete="off">
+                  <div class="mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" class="form-control" id="email" name="email" value="<?=htmlspecialchars($user['email'])?>" required>
+                  </div>
+                  <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="notify_email" name="notify_email" value="1" <?=($user['notify_email']?'checked':'')?> >
+                    <label class="form-check-label" for="notify_email">Email me about important account activity</label>
+                  </div>
+                  <button type="submit" class="btn btn-primary w-100" name="settings_save">Save Settings</button>
+                </form>
               </div>
-              <div class="form-check form-switch mb-3">
-                <input class="form-check-input" type="checkbox" id="notify_email" name="notify_email" value="1" <?=($user['notify_email']?'checked':'')?> >
-                <label class="form-check-label" for="notify_email">Email me about important account activity</label>
-              </div>
-              <button type="submit" class="btn btn-primary w-100" name="settings_save">Save Settings</button>
-            </form>
-          </div>
-        </div>
+            </div>
         <div class="col-12 col-md-6 col-lg-4">
           <div class="settings-card h-100">
             <h2 class="mb-4 text-center">Change Password</h2>
-            <?php if ($password_success): ?><div class="alert alert-success" id="passwordSuccess"><?=$password_success?></div><?php endif; ?>
-            <?php if ($password_error): ?><div class="alert alert-danger" id="passwordError"><?=$password_error?></div><?php endif; ?>
-            <form id="passwordForm" method="post" autocomplete="off">
-              <div class="mb-3">
-                <label for="current_password" class="form-label">Current Password</label>
-                <input type="password" class="form-control" id="current_password" name="current_password" required>
-              </div>
-              <div class="mb-3">
-                <label for="new_password" class="form-label">New Password</label>
-                <input type="password" class="form-control" id="new_password" name="new_password" required>
-              </div>
-              <div class="mb-3">
-                <label for="confirm_password" class="form-label">Confirm New Password</label>
-                <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
-              </div>
+                <?php if ($password_success): ?><div class="alert alert-success" id="passwordSuccess"><?=$password_success?></div><?php endif; ?>
+                <?php if ($password_error): ?><div class="alert alert-danger" id="passwordError"><?=$password_error?></div><?php endif; ?>
+                <form id="passwordForm" method="post" autocomplete="off">
+                  <div class="mb-3">
+                    <label for="current_password" class="form-label">Current Password</label>
+                    <input type="password" class="form-control" id="current_password" name="current_password" required>
+                  </div>
+                  <div class="mb-3">
+                    <label for="new_password" class="form-label">New Password</label>
+                    <input type="password" class="form-control" id="new_password" name="new_password" required>
+                  </div>
+                  <div class="mb-3">
+                    <label for="confirm_password" class="form-label">Confirm New Password</label>
+                    <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                  </div>
               <button type="submit" class="btn btn-primary w-100" name="password_save">Change Password</button>
-            </form>
+                </form>
           </div>
         </div>
         <div class="col-12 col-md-6 col-lg-4">
           <div class="settings-card h-100">
             <h2 class="mb-4 text-center">Two-Factor Authentication (2FA)</h2>
-            <?php if ($twofa_success): ?><div class="alert alert-success" id="twofaSuccess"><?=$twofa_success?></div><?php endif; ?>
-            <?php if ($twofa_error): ?><div class="alert alert-danger" id="twofaError"><?=$twofa_error?></div><?php endif; ?>
-            <form id="twofaForm" method="post" autocomplete="off">
-              <div class="form-check form-switch mb-3">
-                <input class="form-check-input" type="checkbox" id="twofa_enabled" name="twofa_enabled" value="1" <?=$twofa_enabled?'checked':''?> >
-                <label class="form-check-label" for="twofa_enabled">Enable two-factor authentication for extra security</label>
-              </div>
+                <?php if ($twofa_success): ?><div class="alert alert-success" id="twofaSuccess"><?=$twofa_success?></div><?php endif; ?>
+                <?php if ($twofa_error): ?><div class="alert alert-danger" id="twofaError"><?=$twofa_error?></div><?php endif; ?>
+                <form id="twofaForm" method="post" autocomplete="off">
+                  <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="twofa_enabled" name="twofa_enabled" value="1" <?=$twofa_enabled?'checked':''?> >
+                    <label class="form-check-label" for="twofa_enabled">Enable two-factor authentication for extra security</label>
+                  </div>
               <button type="submit" class="btn btn-primary w-100" name="twofa_save">Update 2FA Setting</button>
-            </form>
+                </form>
           </div>
         </div>
       </div>
@@ -275,59 +275,59 @@ $twofa_enabled = $user_twofa ? (int)$user_twofa['twofa_enabled'] : 0;
     // Progressive enhancement: AJAX save
     document.getElementById('settingsForm').addEventListener('submit', function(e) {
       if (!window.fetch) return; // fallback to classic
-      e.preventDefault();
-      const form = this;
-      const data = new FormData(form);
-      fetch('account-settings.php', {
-        method: 'POST',
-        body: data
-      })
-      .then(res => res.text())
-      .then(html => {
+          e.preventDefault();
+          const form = this;
+          const data = new FormData(form);
+          fetch('account-settings.php', {
+            method: 'POST',
+            body: data
+          })
+          .then(res => res.text())
+          .then(html => {
         // Replace the settings card with the new HTML (partial reload)
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
         const newCard = doc.querySelector('.settings-card');
-        if (newCard) {
+            if (newCard) {
           document.querySelector('.settings-card').replaceWith(newCard);
         }
       });
     });
     // Add AJAX for password and 2FA forms
     document.getElementById('passwordForm').addEventListener('submit', function(e) {
-      if (!window.fetch) return;
-      e.preventDefault();
-      const form = this;
-      const data = new FormData(form);
-      fetch('account-settings.php', {
-        method: 'POST',
-        body: data
-      })
-      .then(res => res.text())
-      .then(html => {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
+          if (!window.fetch) return;
+          e.preventDefault();
+          const form = this;
+          const data = new FormData(form);
+          fetch('account-settings.php', {
+            method: 'POST',
+            body: data
+          })
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
         const newCard = doc.querySelectorAll('.settings-card')[1];
-        if (newCard) {
+            if (newCard) {
           document.querySelectorAll('.settings-card')[1].replaceWith(newCard);
         }
       });
     });
     document.getElementById('twofaForm').addEventListener('submit', function(e) {
-      if (!window.fetch) return;
-      e.preventDefault();
-      const form = this;
-      const data = new FormData(form);
-      fetch('account-settings.php', {
-        method: 'POST',
-        body: data
-      })
-      .then(res => res.text())
-      .then(html => {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
+          if (!window.fetch) return;
+          e.preventDefault();
+          const form = this;
+          const data = new FormData(form);
+          fetch('account-settings.php', {
+            method: 'POST',
+            body: data
+          })
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
         const newCard = doc.querySelectorAll('.settings-card')[2];
-        if (newCard) {
+            if (newCard) {
           document.querySelectorAll('.settings-card')[2].replaceWith(newCard);
         }
       });

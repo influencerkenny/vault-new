@@ -1,4 +1,6 @@
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 session_start();
 
 // Redirect to signin if not logged in
@@ -7,8 +9,8 @@ if (!isset($_SESSION['user_id'])) {
   exit;
 }
 
-// Database connection (adjust as needed)
-$pdo = new PDO('mysql:host=localhost;dbname=vault_db', 'root', '');
+require_once __DIR__ . '/api/settings_helper.php';
+global $pdo;
 
 // Fetch user info
 $stmt = $pdo->prepare('SELECT first_name, last_name, email, avatar FROM users WHERE id = ?');
@@ -142,9 +144,10 @@ function sol_display($amount) {
   return '<span class="sol-value">' . number_format($amount, 2) . ' SOL</span>';
 }
 function usdt_placeholder($amount) {
-  // Calculate USDT value using correct rate (1 SOL = $177.32 USDT)
-  $usdtAmount = $amount * 177.32;
-  return '<span class="usdt-convert" data-sol="' . htmlspecialchars($amount, ENT_QUOTES) . '">≈ $' . number_format($usdtAmount, 2) . ' USDT</span>';
+    $rate = get_setting('sol_usdt_rate');
+    if (!$rate || !is_numeric($rate)) $rate = 203.36;
+    $usdtAmount = $amount * $rate;
+    return '<span class="usdt-convert" data-sol="' . htmlspecialchars($amount, ENT_QUOTES) . '">≈ $' . number_format($usdtAmount, 2) . ' USDT</span>';
 }
 ?>
 <!DOCTYPE html>
@@ -519,14 +522,14 @@ function usdt_placeholder($amount) {
           <i class="bi bi-list" style="font-size:1.7rem;"></i>
         </button>
         <img src="/vault-logo-new.png" alt="Vault Logo" class="logo me-3">
-        <a href="/" class="back-link"><i class="bi bi-arrow-left"></i> Back to Home</a>
+        <!-- <a href="/" class="back-link"><i class="bi bi-arrow-left"></i> Back to Home</a> -->
       </div>
       
-      <div>
+      <div class="d-flex align-items-center gap-2">
         <!-- Notification Dropdown -->
-        <div class="dropdown me-3">
-          <button class="btn btn-outline-info position-relative" type="button" id="notificationDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-            <i class="bi bi-bell" style="font-size:1.2rem;"></i>
+        <div class="dropdown">
+          <button class="btn btn-outline-secondary position-relative p-2" type="button" id="notificationDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="line-height:1;">
+            <i class="bi bi-bell" style="font-size:1.2rem; color:#7dd3fc;"></i>
             <?php if($unreadCount > 0): ?>
               <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:0.7rem;">
                 <?=$unreadCount > 9 ? '9+' : $unreadCount?>
@@ -690,7 +693,7 @@ function usdt_placeholder($amount) {
         </div>
         <div class="col-12 col-lg-6">
           <div class="transactions-widget">
-            <h5>Transaction History</h5>
+              <h5>Transaction History</h5>
             <div class="table-responsive" style="max-height:220px;overflow:auto;">
               <table class="table table-dark table-sm align-middle mb-0">
                 <thead>
@@ -817,7 +820,7 @@ function usdt_placeholder($amount) {
       <div class="mb-2">
         <a href="plans.php" class="text-info me-3">Staking Plans</a>
         <a href="roadmap.php" class="text-info">Roadmap</a>
-      </div>
+  </div>
       <div>&copy; <?=date('Y')?> Vault. All rights reserved.</div>
     </footer>
   </div>
@@ -972,13 +975,14 @@ function usdt_placeholder($amount) {
     }
     
     function usdt_placeholder(amount) {
-      // Calculate USDT value using correct rate (1 SOL = $177.32 USDT)
-      const usdtAmount = amount * 177.32;
+      // Calculate USDT value using admin-configured rate
+      const usdtRate = <?= json_encode((float)(get_setting('sol_usdt_rate') && is_numeric(get_setting('sol_usdt_rate')) ? get_setting('sol_usdt_rate') : 203.36)) ?>;
+      const usdtAmount = amount * usdtRate;
       return '<span class="usdt-convert" data-sol="' + amount + '">≈ $' + usdtAmount.toFixed(2) + ' USDT</span>';
     }
 
     // Price update functionality (general)
-    let currentPriceRate = 177.32; // Correct SOL to USDT rate
+    let currentPriceRate = <?= json_encode((float)(get_setting('sol_usdt_rate') && is_numeric(get_setting('sol_usdt_rate')) ? get_setting('sol_usdt_rate') : 203.36)) ?>; // Admin SOL to USDT rate
     
     // Show loading state for price conversions
     function showPriceLoading() {

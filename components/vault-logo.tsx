@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
 import { LogoSkeleton } from "./logo-skeleton"
@@ -15,6 +15,19 @@ interface VaultLogoProps {
 export function VaultLogo({ width = 140, height = 40, className = "h-10 w-auto", priority = false }: VaultLogoProps) {
   const [isLoaded, setIsLoaded] = useState(false)
   const [hasError, setHasError] = useState(false)
+  const [logo, setLogo] = useState<string>("/vault-logo-new.png")
+  const [systemName, setSystemName] = useState<string>("Vault")
+
+  useEffect(() => {
+    // Fetch logo and system name from API
+    fetch("/api/settings")
+      .then(res => res.json())
+      .then(data => {
+        if (data.logo_path) setLogo(data.logo_path)
+        if (data.system_name) setSystemName(data.system_name)
+      })
+      .catch(() => {})
+  }, [])
 
   const handleLoad = () => {
     setIsLoaded(true)
@@ -55,12 +68,12 @@ export function VaultLogo({ width = 140, height = 40, className = "h-10 w-auto",
             animate={{ scale: 1 }}
             transition={{ duration: 0.3 }}
           >
-            Vault
+            {systemName}
           </motion.div>
         ) : (
           <Image
-            src="/vault-logo-new.png"
-            alt="Vault"
+            src={logo}
+            alt={systemName}
             width={width}
             height={height}
             className={className}

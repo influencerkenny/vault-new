@@ -4,6 +4,7 @@ if (!isset($_SESSION['user_id'])) {
   header('Location: ../signin.php');
   exit;
 }
+require_once __DIR__ . '/../api/settings_helper.php';
 $pdo = new PDO('mysql:host=localhost;dbname=vault_db', 'root', '');
 $user_id = $_SESSION['user_id'];
 $success = $error = '';
@@ -50,12 +51,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['gateway_id'], $_POST[
           // Placeholder for email (implement real email in production)
           // mail($user_email, 'Deposit Submitted', 'Your deposit request is pending approval.');
           $success = 'Deposit request submitted! Awaiting admin approval.';
+
+          // Credit referral commission if this is the user's first deposit and they were referred
+          $stmt2 = $pdo->prepare('SELECT referred_by FROM users WHERE id = ?');
+          $stmt2->execute([$user_id]);
+          $referred_by = $stmt2->fetchColumn();
+          if ($referred_by) {
+              // Check if this is the user's first completed deposit
+              $stmt3 = $pdo->prepare('SELECT COUNT(*) FROM transactions WHERE user_id = ? AND type = "deposit" AND status = "completed"');
+              $stmt3->execute([$user_id]);
+              $deposit_count = $stmt3->fetchColumn();
+              if ($deposit_count == 1) {
+                  // Credit commission to referrer
+                  $commission_rate = get_setting('referral_commission');
+                  $commission = $amount * ($commission_rate / 100);
+                  // Find referrer's user_id by username
+                  $stmt4 = $pdo->prepare('SELECT id FROM users WHERE username = ?');
+                  $stmt4->execute([$referred_by]);
+                  $referrer_id = $stmt4->fetchColumn();
+                  if ($referrer_id) {
+                      $stmt5 = $pdo->prepare('INSERT INTO user_rewards (user_id, amount, type, created_at, note) VALUES (?, ?, "referral", NOW(), ?)');
+                      $stmt5->execute([$referrer_id, $commission, 'Referral commission from user #' . $user_id]);
+                      // Add commission to referrer's available balance
+                      $stmt6 = $pdo->prepare('UPDATE user_balances SET available_balance = available_balance + ? WHERE user_id = ?');
+                      $stmt6->execute([$commission, $referrer_id]);
+                  }
+              }
+          }
         } else {
           $error = 'Failed to submit deposit.';
         }
       }
     }
   }
+}
+// After deposit is approved (simulate approval for demo)
+if (isset($_GET['approve']) && isset($_GET['deposit_id'])) {
+    $deposit_id = (int)$_GET['deposit_id'];
+    // Fetch deposit and user info
+    $stmt = $pdo->prepare('SELECT t.*, u.email, u.first_name, u.last_name, u.username FROM transactions t JOIN users u ON t.user_id = u.id WHERE t.id = ? AND t.type = "deposit"');
+    $stmt->execute([$deposit_id]);
+    $deposit = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($deposit) {
+        // Mark as approved
+        $pdo->prepare('UPDATE transactions SET status = "completed" WHERE id = ?')->execute([$deposit_id]);
+        // Prepare email
+        $template = get_setting('email_template_deposit_approval');
+        $replacements = [
+            '{USER_NAME}' => $deposit['first_name'] . ' ' . $deposit['last_name'],
+            '{AMOUNT}' => $deposit['amount'],
+            '{DATE}' => date('Y-m-d H:i'),
+        ];
+        $body = strtr($template, $replacements);
+        $subject = 'Deposit Approved';
+        $headers = "MIME-Version: 1.0\r\nContent-type:text/html;charset=UTF-8\r\n";
+        mail($deposit['email'], $subject, $body, $headers);
+    }
 }
 // Fetch deposit history
 $stmt = $pdo->prepare('SELECT * FROM transactions WHERE user_id = ? AND type = "deposit" ORDER BY created_at DESC');

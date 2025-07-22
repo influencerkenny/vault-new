@@ -1,5 +1,8 @@
 <?php
 // admin/header.php
+require_once __DIR__ . '/../api/settings_helper.php';
+$logo = get_setting('logo_path') ?: '/vault-logo-new.png';
+$system_name = get_setting('system_name') ?: 'Vault Admin';
 ?>
 <div class="dashboard-header" style="border-bottom: 1px solid #1e293b; padding: 1.5rem 2rem 1rem 2rem; background: rgba(17,24,39,0.85); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10;">
   <div class="logo d-flex align-items-center">
@@ -7,8 +10,8 @@
     <button id="sidebarToggle" aria-label="Toggle sidebar" style="display:none;background:none;border:none;margin-right:12px;font-size:2rem;color:#38bdf8;cursor:pointer;">
       <i class="bi bi-list"></i>
     </button>
-    <img src="/vault-logo-new.png" alt="Vault Logo" class="me-2" style="height:36px;">
-    <span style="font-weight:700;font-size:1.2rem;color:#38bdf8;">Vault Admin</span>
+    <img src="<?=htmlspecialchars($logo)?>" alt="Logo" class="me-2" style="height:36px;">
+    <span style="font-weight:700;font-size:1.2rem;color:#38bdf8;"><?=htmlspecialchars($system_name)?></span>
   </div>
   <div class="profile-dropdown" id="profileDropdown">
     <button class="profile-btn" id="profileBtn" aria-haspopup="true" aria-expanded="false" aria-label="Admin profile menu" style="background: none; border: none; color: #e5e7eb; font-size: 2rem; border-radius: 50%; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; transition: background 0.2s;">

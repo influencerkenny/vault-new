@@ -39,6 +39,9 @@ try {
         $rewardAmount = rand(50, 200);
         $stmt = $pdo->prepare("INSERT INTO user_rewards (user_id, amount, type, description) VALUES (?, ?, 'interest', 'Interest earned')");
         $stmt->execute([$userId, $rewardAmount]);
+        // Insert reward into transactions table as well
+        $stmt = $pdo->prepare("INSERT INTO transactions (user_id, type, amount, status, description, created_at) VALUES (?, 'reward', ?, 'completed', 'Interest earned', NOW())");
+        $stmt->execute([$userId, $rewardAmount]);
         echo "✅ Added reward: SOL " . number_format($rewardAmount, 2) . "<br>";
         
         // 4. Add a withdrawal (if balance allows)

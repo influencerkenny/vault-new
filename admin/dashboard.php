@@ -79,12 +79,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_email_config']
   $email_success = true;
 }
 
+require_once '../api/settings_helper.php';
+
 function sol_display($amount) {
   return '<span class="sol-value">' . number_format($amount, 2) . ' SOL</span>';
 }
 function usdt_placeholder($amount) {
-  // Placeholder span for JS to fill in
-  return '<span class="usdt-convert" data-sol="' . htmlspecialchars($amount, ENT_QUOTES) . '">≈ $--.-- USDT</span>';
+    $rate = get_setting('sol_usdt_rate');
+    if (!$rate || !is_numeric($rate)) $rate = 203.36;
+    $usdtAmount = $amount * $rate;
+    return '<span class="usdt-convert" data-sol="' . htmlspecialchars($amount, ENT_QUOTES) . '">≈ $' . number_format($usdtAmount, 2) . ' USDT</span>';
 }
 ?>
 <!DOCTYPE html>
@@ -338,33 +342,14 @@ function usdt_placeholder($amount) {
   </style>
 </head>
 <body>
-<div class="sidebar" id="sidebar" aria-label="Admin sidebar navigation">
-  <div class="logo mb-4">
-    <img src="/vault-logo-new.png" alt="Vault Logo" style="height:40px;">
-    <div style="font-weight:700;font-size:1.3rem;color:#38bdf8;">Vault Admin</div>
-  </div>
-  <a href="dashboard.php" class="nav-link<?=basename($_SERVER['PHP_SELF'])==='dashboard.php'?' active':''?>"><i class="bi bi-house"></i> Dashboard</a>
-  <a href="users.php" class="nav-link<?=basename($_SERVER['PHP_SELF'])==='users.php'?' active':''?>"><i class="bi bi-people"></i> Users</a>
-  <a href="plans.php" class="nav-link<?=basename($_SERVER['PHP_SELF'])==='plans.php'?' active':''?>"><i class="bi bi-layers"></i> Plans</a>
-  <a href="deposits.php" class="nav-link<?=basename($_SERVER['PHP_SELF'])==='deposits.php'?' active':''?> position-relative">
-    <i class="bi bi-download"></i> Deposits
-    <?php if($pendingDeposits > 0): ?>
-      <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:0.7rem; margin-left:0.5rem;">
-        <?=$pendingDeposits > 9 ? '9+' : $pendingDeposits?>
-      </span>
-    <?php endif; ?>
-  </a>
-  <a href="withdrawals.php" class="nav-link<?=basename($_SERVER['PHP_SELF'])==='withdrawals.php'?' active':''?>"><i class="bi bi-upload"></i> Withdrawals</a>
-  <a href="transactions.php" class="nav-link<?=basename($_SERVER['PHP_SELF'])==='transactions.php'?' active':''?>"><i class="bi bi-list"></i> Transactions</a>
-  <a href="referrals.php" class="nav-link<?=basename($_SERVER['PHP_SELF'])==='referrals.php'?' active':''?>"><i class="bi bi-people"></i> Referrals</a>
-  <a href="payment-gateway.php" class="nav-link<?=basename($_SERVER['PHP_SELF'])==='payment-gateway.php'?' active':''?>"><i class="bi bi-credit-card"></i> Payment Gateway</a>
-  <a href="settings.php" class="nav-link<?=basename($_SERVER['PHP_SELF'])==='settings.php'?' active':''?>"><i class="bi bi-gear"></i> Settings</a>
-  <a href="support.php" class="nav-link<?=basename($_SERVER['PHP_SELF'])==='support.php'?' active':''?>"><i class="bi bi-question-circle"></i> Support & Tickets</a>
-  <form method="get" action="dashboard.php"><button type="submit" name="logout" class="logout-btn"><i class="bi bi-box-arrow-right"></i> Logout</button></form>
-</div>
+<?php include 'sidebar.php'; ?>
+<div id="sidebarOverlay" class="sidebar-mobile-overlay"></div>
 <div class="main-content">
   <div class="dashboard-header">
     <div class="logo d-flex align-items-center">
+      <button class="btn btn-outline-info d-lg-none me-3" id="sidebarToggle" aria-label="Open sidebar">
+        <i class="bi bi-list" style="font-size:1.7rem;"></i>
+      </button>
       <img src="/vault-logo-new.png" alt="Vault Logo" class="me-2" style="height:36px;">
       <span style="font-weight:700;font-size:1.2rem;color:#38bdf8;">Vault Admin</span>
     </div>
@@ -663,6 +648,34 @@ function updateSolToUsdt() {
 }
 updateSolToUsdt();
 setInterval(updateSolToUsdt, 300000);
+</script>
+<script>
+  var sidebar = document.getElementById('sidebar');
+  var sidebarOverlay = document.getElementById('sidebarOverlay');
+  var sidebarToggle = document.getElementById('sidebarToggle');
+  function openSidebar() {
+    sidebar.classList.add('open');
+    sidebarOverlay.classList.add('active');
+  }
+  function closeSidebar() {
+    sidebar.classList.remove('open');
+    sidebarOverlay.classList.remove('active');
+  }
+  if (sidebarToggle) {
+    sidebarToggle.addEventListener('click', openSidebar);
+  }
+  if (sidebarOverlay) {
+    sidebarOverlay.addEventListener('click', closeSidebar);
+  }
+  document.querySelectorAll('.sidebar .nav-link').forEach(function(link) {
+    link.addEventListener('click', function() { if (window.innerWidth < 992) closeSidebar(); });
+  });
+  window.addEventListener('resize', function() {
+    if (window.innerWidth >= 992) {
+      sidebar.classList.remove('open');
+      sidebarOverlay.classList.remove('active');
+    }
+  });
 </script>
 </body>
 </html> 

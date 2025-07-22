@@ -4,13 +4,13 @@ if (!isset($_SESSION['user_id'])) {
   header('Location: signin.php');
   exit;
 }
+require_once 'api/settings_helper.php';
 $pdo = new PDO('mysql:host=localhost;dbname=vault_db', 'root', '');
 $user_id = $_SESSION['user_id'];
 $success = $error = '';
 
 // Fetch enabled gateways
 $gateways = $pdo->query('SELECT * FROM payment_gateways WHERE status="enabled" ORDER BY created_at DESC')->fetchAll(PDO::FETCH_ASSOC);
-
 // If no gateways exist, create a default one
 if (empty($gateways)) {
   try {
@@ -25,7 +25,6 @@ if (empty($gateways)) {
       'thumbnail' => 'bank-transfer.png',
       'status' => 'enabled'
     ];
-    
     $stmt = $pdo->prepare('INSERT INTO payment_gateways (name, currency, rate_to_usd, min_amount, max_amount, instructions, user_data_label, thumbnail, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())');
     $stmt->execute([
       $defaultGateway['name'],
@@ -38,32 +37,18 @@ if (empty($gateways)) {
       $defaultGateway['thumbnail'],
       $defaultGateway['status']
     ]);
-    
-    // Refresh gateways after adding default
     $gateways = $pdo->query('SELECT * FROM payment_gateways WHERE status="enabled" ORDER BY created_at DESC')->fetchAll(PDO::FETCH_ASSOC);
   } catch (Exception $e) {
-    // If insertion fails, continue with empty gateways
     error_log('Failed to create default gateway: ' . $e->getMessage());
   }
 }
 // Fetch user info for sidebar/header
-$stmt = $pdo->prepare('SELECT first_name, last_name, email FROM users WHERE id = ?');
+$stmt = $pdo->prepare('SELECT first_name, last_name, email, avatar, username FROM users WHERE id = ?');
 $stmt->execute([$user_id]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
+$avatar = !empty($user['avatar']) ? $user['avatar'] : 'public/placeholder-user.jpg';
 $displayName = $user ? trim($user['first_name'] . ' ' . $user['last_name']) : 'Investor';
 $email = $user ? $user['email'] : '';
-$avatar = 'public/placeholder-user.jpg';
-$sidebarLinks = [
-  ['href' => 'user-dashboard.php', 'label' => 'Dashboard', 'icon' => 'bi-house'],
-  ['href' => 'plans.php', 'label' => 'Plans', 'icon' => 'bi-layers'],
-  ['href' => 'deposits.php', 'label' => 'Deposits', 'icon' => 'bi-download'],
-  ['href' => 'withdrawals.php', 'label' => 'Withdrawals', 'icon' => 'bi-upload'],
-  ['href' => 'transactions.php', 'label' => 'Transactions', 'icon' => 'bi-list'],
-  ['href' => 'referral.php', 'label' => 'Referral', 'icon' => 'bi-people'],
-  ['href' => 'settings.php', 'label' => 'Settings', 'icon' => 'bi-gear'],
-  ['href' => 'profile.php', 'label' => 'Profile', 'icon' => 'bi-person'],
-  ['href' => 'support.php', 'label' => 'Support', 'icon' => 'bi-question-circle'],
-];
 // Handle deposit submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['gateway_id'], $_POST['amount'])) {
   $gateway_id = (int)$_POST['gateway_id'];
@@ -108,6 +93,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['gateway_id'], $_POST[
 $stmt = $pdo->prepare('SELECT * FROM transactions WHERE user_id = ? AND type = "deposit" ORDER BY created_at DESC');
 $stmt->execute([$user_id]);
 $deposits = $stmt->fetchAll(PDO::FETCH_ASSOC);
+function sol_display($amount) {
+  return '<span class="sol-value">' . number_format($amount, 2) . ' SOL</span>';
+}
+function usdt_placeholder($amount) {
+    $rate = get_setting('sol_usdt_rate');
+    if (!$rate || !is_numeric($rate)) $rate = 203.36;
+    $usdtAmount = $amount * $rate;
+    return '<span class="usdt-convert" data-sol="' . htmlspecialchars($amount, ENT_QUOTES) . '">≈ $' . number_format($usdtAmount, 2) . ' USDT</span>';
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -118,7 +112,6 @@ $deposits = $stmt->fetchAll(PDO::FETCH_ASSOC);
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-  <link rel="stylesheet" href="styles/globals.css">
   <style>
     body { font-family: 'Inter', sans-serif; background: #0f172a; color: #e5e7eb; }
     .sidebar { background: rgba(10,16,30,0.95); border-right: 1px solid #1e293b; min-height: 100vh; width: 260px; position: fixed; top: 0; left: 0; z-index: 2001; padding: 2rem 1.5rem 1.5rem 1.5rem; display: flex; flex-direction: column; transition: left 0.3s; }
@@ -132,68 +125,50 @@ $deposits = $stmt->fetchAll(PDO::FETCH_ASSOC);
     .dashboard-header .logo { height: 48px; }
     .dashboard-header .back-link { color: #38bdf8; font-weight: 500; text-decoration: none; margin-left: 1.5rem; transition: color 0.2s; }
     .dashboard-header .back-link:hover { color: #0ea5e9; text-decoration: underline; }
-    .deposit-container { max-width: 1050px; margin: 40px auto; background: #181f2a; border-radius: 18px; box-shadow: 0 4px 32px #0003; padding: 32px 32px 24px 32px; }
-    .gateway-thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 8px; background: #232b3b; }
-    .step-section { display: none; }
-    .step-section.active { display: block; }
-    .form-label { color: #60a5fa; font-weight: 500; }
-    .form-control, .form-select { background: #232b3b; color: #e5e7eb; border: 1px solid #2563eb33; }
-    .form-control:focus, .form-select:focus { border-color: #38bdf8; box-shadow: 0 0 0 2px #38bdf855; }
-    .btn-info { background: linear-gradient(90deg, #2563eb 0%, #0ea5e9 100%); border: none; }
-    .btn-info:hover { background: linear-gradient(90deg, #0ea5e9 0%, #2563eb 100%); }
-    .alert { font-size: 0.98rem; }
-    .history-table { margin-top: 2.5rem; background: #151a23; border-radius: 1rem; box-shadow: 0 2px 12px #0003; overflow: hidden; }
-    .history-table th, .history-table td { color: #f3f4f6; vertical-align: middle; font-size: 1.07rem; padding: 1.1rem 1.2rem; }
-    .history-table th { background: #232b3b; color: #38bdf8; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; border-bottom: 2px solid #2563eb33; }
-    .history-table td { font-weight: 600; color: #e0e7ef; background: #181f2a; border-bottom: 1px solid #232b3b; }
-    .history-table tr:nth-child(even) td { background: #1e2330; }
-    .history-table tr:hover td { background: #232b3b; color: #fff; transition: background 0.18s, color 0.18s; }
-    .history-table tr:last-child td { border-bottom: none; }
-    .user-profile-header { display: flex; align-items: center; gap: 1rem; }
-    .user-profile-header img { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 2px solid #38bdf8; }
-    .user-profile-header .profile-info { line-height: 1.2; }
-    .user-profile-header .profile-name { font-size: 1.15rem; font-weight: 700; color: #38bdf8; }
-    .user-profile-header .profile-email { font-size: 0.98rem; color: #a1a1aa; }
-    .badge.bg-success { background: #22c55e !important; color: #fff !important; font-weight: 700; }
-    .badge.bg-danger { background: #ef4444 !important; color: #fff !important; font-weight: 700; }
-    .badge.bg-warning { background: #fbbf24 !important; color: #181f2a !important; font-weight: 700; }
-    .badge.bg-secondary { background: #64748b !important; color: #fff !important; font-weight: 700; }
-    .proof-link { color: #60a5fa; text-decoration: underline; font-weight: 600; }
-    .proof-link:hover { color: #38bdf8; }
-    @media (max-width: 991px) { 
-      .main-content { margin-left: 0; } 
-      .sidebar { left: -260px; } 
-      .sidebar.active { left: 0; } 
-      .deposit-container { margin: 8px 2px; padding: 16px; } 
+    .dashboard-content-wrapper { max-width: 900px; width: 100%; margin: 0 auto; padding: 0 1rem; font-size: 0.93rem; }
+    .table-responsive { overflow-x: auto; }
+    .table { min-width: 600px; font-size: 0.92rem; }
+    .table th, .table td { padding: 0.35rem 0.5rem; }
+    @media (max-width: 991px) {
+      .sidebar { left: -260px; }
+      .sidebar.active { left: 0; }
+      .main-content { margin-left: 0; }
+      .dashboard-content-wrapper { max-width: 100vw; margin: 0; padding: 0 0.3rem; font-size: 0.91rem; }
     }
-    @media (max-width: 700px) { 
-      .deposit-container { padding: 12px; margin: 4px; } 
-      .dashboard-header { padding: 1rem; }
-      .user-profile-header { flex-direction: column; gap: 0.5rem; text-align: center; }
-      .user-profile-header img { width: 40px; height: 40px; }
-      .user-profile-header .profile-name { font-size: 1rem; }
-      .user-profile-header .profile-email { font-size: 0.9rem; }
+    @media (max-width: 767px) {
+      .dashboard-content-wrapper { padding: 0 0.1rem; font-size: 0.89rem; }
     }
-    @media (max-width: 575px) { 
-      .deposit-container { padding: 8px; margin: 2px; } 
-      .dashboard-header { padding: 0.75rem; }
-      .dashboard-header .logo { height: 36px; }
-      .back-link { font-size: 0.9rem; }
-      .history-table { font-size: 0.9rem; }
-      .history-table th, .history-table td { padding: 0.5rem 0.25rem; }
+    @media (max-width: 575px) {
+      .dashboard-content-wrapper { padding: 0 0.05rem; font-size: 0.87rem; }
+      .table { font-size: 0.87rem; min-width: 480px; }
+      .table th, .table td { padding: 0.28rem 0.35rem; }
     }
-    .sidebar-mobile-overlay { 
-      position: fixed; 
-      inset: 0; 
-      background: rgba(0,0,0,0.45); 
-      z-index: 2000; 
-      opacity: 0; 
-      pointer-events: none; 
-      transition: opacity 0.2s; 
+    .sidebar-mobile-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 2000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
     }
-    .sidebar-mobile-overlay.active { 
-      opacity: 1; 
-      pointer-events: auto; 
+    .sidebar-mobile-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .dashboard-footer {
+      border-top: 1px solid #1e293b;
+      padding: 2rem;
+      background: rgba(17,24,39,0.85);
+      color: #a1a1aa;
+      text-align: center;
+      margin-top: auto;
+    }
+    .sol-value { font-size: 0.95em; color: #38bdf8; font-weight: 600; }
+    .usdt-convert { display: block; font-size: 0.6em; color: #94a3b8; margin-top: 0.1em; transition: color 0.3s ease; }
+    /* Make deposit form labels white */
+    #depositForm .form-label {
+      color: #fff !important;
     }
   </style>
 </head>
@@ -203,7 +178,19 @@ $deposits = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <div class="logo mb-4">
       <img src="/vault-logo-new.png" alt="Vault Logo" height="48" loading="lazy">
     </div>
-    <?php foreach ($sidebarLinks as $link): ?>
+    <?php
+    $sidebarLinks = [
+      ['href' => 'user-dashboard.php', 'label' => 'Dashboard', 'icon' => 'bi-house'],
+      ['href' => 'plans.php', 'label' => 'Plans', 'icon' => 'bi-layers'],
+      ['href' => 'deposits.php', 'label' => 'Deposits', 'icon' => 'bi-download'],
+      ['href' => 'withdrawals.php', 'label' => 'Withdrawals', 'icon' => 'bi-upload'],
+      ['href' => 'transactions.php', 'label' => 'Transactions', 'icon' => 'bi-list'],
+      ['href' => 'referral.php', 'label' => 'Referral', 'icon' => 'bi-people'],
+      ['href' => 'account-settings.php', 'label' => 'Settings', 'icon' => 'bi-gear'],
+      ['href' => 'profile.php', 'label' => 'Profile', 'icon' => 'bi-person'],
+      ['href' => 'support.php', 'label' => 'Support', 'icon' => 'bi-question-circle'],
+    ];
+    foreach ($sidebarLinks as $link): ?>
       <a href="<?=$link['href']?>" class="nav-link<?=basename($_SERVER['PHP_SELF']) === basename($link['href']) ? ' active' : ''?>">
         <i class="bi <?=$link['icon']?>"></i> <?=$link['label']?>
       </a>
@@ -215,34 +202,25 @@ $deposits = $stmt->fetchAll(PDO::FETCH_ASSOC);
   <!-- Mobile Sidebar Overlay (after sidebar) -->
   <div id="sidebarOverlay" class="sidebar-mobile-overlay"></div>
   <div class="main-content">
-    <header class="dashboard-header d-flex align-items-center justify-content-between">
-      <div class="d-flex align-items-center">
-        <!-- Hamburger for mobile -->
-        <button class="btn btn-outline-info d-lg-none me-3" id="sidebarToggle" aria-label="Open sidebar">
-          <i class="bi bi-list" style="font-size:1.7rem;"></i>
-        </button>
-        <img src="/vault-logo-new.png" alt="Vault Logo" class="logo me-3">
-        <a href="user-dashboard.php" class="back-link"><i class="bi bi-arrow-left"></i> Back to Dashboard</a>
-      </div>
-      <div class="user-profile-header">
-        <img src="<?=$avatar?>" alt="Profile">
-        <div class="profile-info">
-          <div class="profile-name"><?=htmlspecialchars($displayName)?></div>
-          <div class="profile-email"><?=htmlspecialchars($email)?></div>
-        </div>
-      </div>
-    </header>
+    <?php include 'user/header.php'; ?>
     <main class="flex-grow-1 p-4">
-      <div class="deposit-container mx-auto">
-        <h2 class="mb-4 text-info fw-bold text-center">Deposit Funds</h2>
-        <?php if ($success): ?><div class="alert alert-success"><?=$success?></div><?php endif; ?>
+      <div class="dashboard-content-wrapper mx-auto">
+        <h2 class="mb-4 text-info fw-bold">Deposit Funds</h2>
+        <?php if ($success): ?><div class="alert alert-success" id="depositSuccessAlert"><?=$success?></div><?php endif; ?>
         <?php if ($error): ?><div class="alert alert-danger"><?=$error?></div><?php endif; ?>
         <?php if (empty($gateways)): ?>
           <div class="alert alert-warning text-center">No payment methods are currently available. Please contact support.</div>
         <?php endif; ?>
-        <form id="depositForm" method="post" enctype="multipart/form-data" autocomplete="off"<?=empty($gateways)?' style="pointer-events:none;opacity:0.6;"':''?>>
-          <!-- Step 1: Select Gateway -->
-          <div class="step-section" id="step1">
+        <div class="mb-4">
+          <button class="btn btn-primary mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#depositFormCollapse" aria-expanded="false" aria-controls="depositFormCollapse">
+            <i class="bi bi-plus-circle me-1"></i> New Deposit
+          </button>
+          <div class="collapse" id="depositFormCollapse">
+            <div class="card shadow-lg border-0" style="background:#181f2a;border-radius:1.25rem;max-width:700px;margin:0 auto 2.5rem auto;box-shadow:0 4px 32px #0003;">
+              <div class="card-body p-4">
+        <form id="depositForm" method="post" enctype="multipart/form-data" autocomplete="off"<?=empty($gateways)?' style="pointer-events:none;opacity:0.6;"':''?> >
+          <div class="row g-3 mb-4">
+            <div class="col-md-4">
             <label for="gateway_id" class="form-label">Select Payment Method</label>
             <select class="form-select mb-3" id="gateway_id" name="gateway_id" required>
               <option value="">Choose a gateway</option>
@@ -253,43 +231,43 @@ $deposits = $stmt->fetchAll(PDO::FETCH_ASSOC);
               <?php endforeach; ?>
             </select>
             <div id="gatewayDetails" class="form-text mb-3"></div>
-            <button type="button" class="btn btn-info w-100" id="toStep2">Continue</button>
           </div>
-          <!-- Step 2: Amount -->
-          <div class="step-section" id="step2">
+            <div class="col-md-4">
             <label for="amount" class="form-label">Amount</label>
             <input type="number" class="form-control mb-2" id="amount" name="amount" min="0" step="0.01" required>
             <div id="amountRange" class="form-text mb-2"></div>
-            <button type="button" class="btn btn-secondary w-100 mb-2" id="backTo1">Back</button>
-            <button type="button" class="btn btn-info w-100" id="toStep3">Continue</button>
           </div>
-          <!-- Step 3: Preview & Proof -->
-          <div class="step-section" id="step3">
-            <div class="mb-3" id="previewDetails"></div>
-            <div class="mb-3">
+            <div class="col-md-4">
               <label for="proof" class="form-label">Upload Proof of Payment</label>
               <input type="file" class="form-control" id="proof" name="proof" accept="image/*,application/pdf" required>
             </div>
-            <button type="button" class="btn btn-secondary w-100 mb-2" id="backTo2">Back</button>
-            <button type="submit" class="btn btn-info w-100">Pay Now</button>
+          </div>
+          <div class="row g-3 mb-4">
+            <div class="col-12">
+              <button type="submit" class="btn btn-info w-100">Submit Deposit</button>
+            </div>
           </div>
         </form>
-        <!-- Deposit History Table -->
-        <h4 class="mt-5 mb-3 text-info fw-bold text-center">Deposit History</h4>
-        <div class="table-responsive">
-          <table class="table history-table table-striped table-hover align-middle">
+              </div>
+            </div>
+          </div>
+        </div>
+        <h4 class="mt-5 mb-3 text-info fw-bold">Deposit History</h4>
+        <div class="table-responsive mb-5" style="border-radius: 1rem; overflow: hidden; background: #111827cc;">
+          <table class="table table-dark table-striped table-hover align-middle">
             <thead>
               <tr>
+                <th>Date</th>
                 <th>Amount</th>
                 <th>Method</th>
                 <th>Status</th>
-                <th>Date</th>
                 <th>Proof</th>
               </tr>
             </thead>
             <tbody>
               <?php foreach ($deposits as $dep): ?>
               <tr>
+                <td><?=date('M d, Y H:i', strtotime($dep['created_at']))?></td>
                 <td><?=number_format($dep['amount'],2)?></td>
                 <td><?=htmlspecialchars($dep['description'])?></td>
                 <td>
@@ -301,7 +279,6 @@ $deposits = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <span class="badge bg-danger">Rejected</span>
                   <?php endif; ?>
                 </td>
-                <td><?=date('Y-m-d H:i', strtotime($dep['created_at']))?></td>
                 <td>
                   <?php if (!empty($dep['proof'])): ?>
                     <a href="public/<?=htmlspecialchars($dep['proof'])?>" target="_blank" class="proof-link">View</a>
@@ -317,110 +294,48 @@ $deposits = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
       </div>
     </main>
-    <footer class="dashboard-footer mt-4 text-center">
-      &copy; <?=date('Y')?> Vault. All rights reserved.
+    <footer class="dashboard-footer">
+      <img src="/vault-logo-new.png" alt="Vault Logo" height="32" class="mb-2">
+      <div class="mb-2">
+        <a href="plans.php" class="text-info me-3">Staking Plans</a>
+        <a href="roadmap.php" class="text-info">Roadmap</a>
+      </div>
+      <div>&copy; <?=date('Y')?> Vault. All rights reserved.</div>
     </footer>
   </div>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" defer></script>
-  <script defer>
-    // Mobile sidebar toggle/overlay
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Sidebar toggle/overlay (copied from transactions.php)
     var sidebar = document.getElementById('sidebar');
     var sidebarOverlay = document.getElementById('sidebarOverlay');
     var sidebarToggle = document.getElementById('sidebarToggle');
-    function openSidebar() { sidebar.classList.add('active'); sidebarOverlay.classList.add('active'); }
-    function closeSidebar() { sidebar.classList.remove('active'); sidebarOverlay.classList.remove('active'); }
-    if (sidebarToggle) { sidebarToggle.addEventListener('click', openSidebar); }
-    if (sidebarOverlay) { sidebarOverlay.addEventListener('click', closeSidebar); }
+    function openSidebar() {
+      sidebar.classList.add('active');
+      sidebarOverlay.classList.add('active');
+    }
+    function closeSidebar() {
+      sidebar.classList.remove('active');
+      sidebarOverlay.classList.remove('active');
+    }
+    if (sidebarToggle) {
+      sidebarToggle.addEventListener('click', openSidebar);
+    }
+    if (sidebarOverlay) {
+      sidebarOverlay.addEventListener('click', closeSidebar);
+    }
     document.querySelectorAll('.sidebar .nav-link').forEach(function(link) {
-      link.addEventListener('click', function() { if (window.innerWidth < 992) closeSidebar(); });
+      link.addEventListener('click', function() {
+        if (window.innerWidth < 992) closeSidebar();
+      });
     });
-
-    // Deposit form functionality
-    document.addEventListener('DOMContentLoaded', function() {
-      // Show first step by default
-      document.getElementById('step1').classList.add('active');
-      
-      // Gateway selection change
-      document.getElementById('gateway_id').addEventListener('change', function() {
-        var selected = this.options[this.selectedIndex];
-        var details = document.getElementById('gatewayDetails');
-        if (selected.value) {
-          details.innerHTML = `
-            <div class="alert alert-info">
-              <strong>${selected.text}</strong><br>
-              Min: ${selected.dataset.min} ${selected.dataset.currency}<br>
-              Max: ${selected.dataset.max} ${selected.dataset.currency}<br>
-              Rate: 1 USD = ${selected.dataset.rate} ${selected.dataset.currency}
-            </div>
-          `;
-        } else {
-          details.innerHTML = '';
-        }
-      });
-
-      // Step navigation
-      document.getElementById('toStep2').addEventListener('click', function() {
-        if (document.getElementById('gateway_id').value) {
-          document.getElementById('step1').classList.remove('active');
-          document.getElementById('step2').classList.add('active');
-          updateAmountRange();
-        }
-      });
-
-      document.getElementById('backTo1').addEventListener('click', function() {
-        document.getElementById('step2').classList.remove('active');
-        document.getElementById('step1').classList.add('active');
-      });
-
-      document.getElementById('toStep3').addEventListener('click', function() {
-        if (document.getElementById('amount').value) {
-          document.getElementById('step2').classList.remove('active');
-          document.getElementById('step3').classList.add('active');
-          updatePreview();
-        }
-      });
-
-      document.getElementById('backTo2').addEventListener('click', function() {
-        document.getElementById('step3').classList.remove('active');
-        document.getElementById('step2').classList.add('active');
-      });
-
-      // Amount input change
-      document.getElementById('amount').addEventListener('input', updateAmountRange);
-
-      function updateAmountRange() {
-        var selected = document.getElementById('gateway_id').options[document.getElementById('gateway_id').selectedIndex];
-        var amount = document.getElementById('amount').value;
-        var range = document.getElementById('amountRange');
-        
-        if (selected.value && amount) {
-          var min = parseFloat(selected.dataset.min);
-          var max = parseFloat(selected.dataset.max);
-          var current = parseFloat(amount);
-          
-          if (current < min || current > max) {
-            range.innerHTML = `<div class="alert alert-danger">Amount must be between ${min} and ${max} ${selected.dataset.currency}</div>`;
+    window.addEventListener('resize', function() {
+      if (window.innerWidth >= 992) {
+        sidebar.classList.remove('d-none');
+        sidebar.classList.add('d-flex');
+        sidebarOverlay.classList.remove('active');
           } else {
-            range.innerHTML = `<div class="alert alert-success">Amount is within valid range</div>`;
-          }
-        }
-      }
-
-      function updatePreview() {
-        var selected = document.getElementById('gateway_id').options[document.getElementById('gateway_id').selectedIndex];
-        var amount = document.getElementById('amount').value;
-        var preview = document.getElementById('previewDetails');
-        
-        if (selected.value && amount) {
-          preview.innerHTML = `
-            <div class="alert alert-info">
-              <h6>Deposit Summary</h6>
-              <strong>Method:</strong> ${selected.text}<br>
-              <strong>Amount:</strong> ${amount} ${selected.dataset.currency}<br>
-              <strong>Instructions:</strong> ${selected.dataset.instructions}
-            </div>
-          `;
-        }
+        sidebar.classList.remove('d-flex');
+        sidebar.classList.add('d-none');
       }
     });
   </script>

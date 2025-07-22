@@ -71,6 +71,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     foreach ($fields as $k => $_) $fields[$k] = '';
   }
 }
+require_once __DIR__ . '/api/settings_helper.php';
+// After successful registration (inside if ($success) block)
+if ($success) {
+    $template = get_setting('email_template_registration_congrats');
+    $replacements = [
+        '{USER_NAME}' => $fields['first_name'] . ' ' . $fields['last_name'],
+        '{DATE}' => date('Y-m-d H:i'),
+    ];
+    $body = strtr($template, $replacements);
+    $subject = 'Welcome to Vault!';
+    $headers = "MIME-Version: 1.0\r\nContent-type:text/html;charset=UTF-8\r\n";
+    mail($fields['email'], $subject, $body, $headers);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">

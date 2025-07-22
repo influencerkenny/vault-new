@@ -41,18 +41,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['withdraw_amount'])) {
   }
 }
 
+// After withdrawal is approved (simulate approval for demo)
+if (isset($_GET['approve']) && isset($_GET['withdrawal_id'])) {
+    $withdrawal_id = (int)$_GET['withdrawal_id'];
+    // Fetch withdrawal and user info
+    $stmt = $pdo->prepare('SELECT t.*, u.email, u.first_name, u.last_name, u.username FROM transactions t JOIN users u ON t.user_id = u.id WHERE t.id = ? AND t.type = "withdrawal"');
+    $stmt->execute([$withdrawal_id]);
+    $withdrawal = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($withdrawal) {
+        // Mark as approved
+        $pdo->prepare('UPDATE transactions SET status = "completed" WHERE id = ?')->execute([$withdrawal_id]);
+        // Prepare email
+        $template = get_setting('email_template_withdrawal_approval');
+        $replacements = [
+            '{USER_NAME}' => $withdrawal['first_name'] . ' ' . $withdrawal['last_name'],
+            '{AMOUNT}' => $withdrawal['amount'],
+            '{DATE}' => date('Y-m-d H:i'),
+        ];
+        $body = strtr($template, $replacements);
+        $subject = 'Withdrawal Approved';
+        $headers = "MIME-Version: 1.0\r\nContent-type:text/html;charset=UTF-8\r\n";
+        mail($withdrawal['email'], $subject, $body, $headers);
+    }
+}
+
 // Fetch withdrawal history
 $stmt = $pdo->prepare("SELECT amount, status, description, created_at FROM transactions WHERE user_id = ? AND type = 'withdrawal' ORDER BY created_at DESC");
 $stmt->execute([$user_id]);
 $withdrawals = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Fetch user info for sidebar/header
-$stmt = $pdo->prepare('SELECT first_name, last_name, email FROM users WHERE id = ?');
+$stmt = $pdo->prepare('SELECT first_name, last_name, email, avatar, username FROM users WHERE id = ?');
 $stmt->execute([$user_id]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
+$avatar = !empty($user['avatar']) ? $user['avatar'] : 'public/placeholder-user.jpg';
+// Fetch unread notifications/messages count from database
+$stmt = $pdo->prepare('SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0');
+$stmt->execute([$user_id]);
+$unreadCount = (int)$stmt->fetchColumn();
+// Fetch recent notifications for dropdown
+$stmt = $pdo->prepare('SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 3');
+$stmt->execute([$user_id]);
+$notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 $displayName = $user ? trim($user['first_name'] . ' ' . $user['last_name']) : 'Investor';
 $email = $user ? $user['email'] : '';
-$avatar = 'public/placeholder-user.jpg';
 
 $sidebarLinks = [
   ['href' => 'user-dashboard.php', 'label' => 'Dashboard', 'icon' => 'bi-house'],
@@ -76,7 +109,7 @@ $sidebarLinks = [
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
   <style>
-    body { font-family: 'Inter', sans-serif; background: #0f172a; color: #e5e7eb; }
+    body { font-family: 'Inter', sans-serif; background: #0f172a; color: #e5e7eb; font-size: 0.93rem; }
     .sidebar {
       background: rgba(10,16,30,0.95);
       border-right: 1px solid #1e293b;
@@ -90,41 +123,42 @@ $sidebarLinks = [
       flex-direction: column;
       transition: left 0.3s;
     }
-    .sidebar .logo { margin-bottom: 2rem; text-align: center; }
-    .sidebar .nav-link { color: #cbd5e1; font-weight: 500; border-radius: 0.75rem; padding: 0.75rem 1rem; margin-bottom: 0.25rem; display: flex; align-items: center; gap: 0.75rem; transition: background 0.2s, color 0.2s; position: relative; }
+    .sidebar .logo { margin-bottom: 2rem; text-align: center; font-size: 0.95em; }
+    .sidebar .nav-link { color: #cbd5e1; font-weight: 500; border-radius: 0.75rem; padding: 0.75rem 1rem; margin-bottom: 0.25rem; display: flex; align-items: center; gap: 0.75rem; transition: background 0.2s, color 0.2s; position: relative; font-size: 0.95em; }
     .sidebar .nav-link.active, .sidebar .nav-link:hover { background: linear-gradient(90deg, #2563eb22 0%, #0ea5e922 100%); color: #38bdf8; box-shadow: 0 2px 8px 0 rgba(59,130,246,0.08); }
-    .sidebar .logout-btn { color: #f87171; font-weight: 500; border-radius: 0.75rem; padding: 0.75rem 1rem; margin-top: auto; background: none; border: none; display: flex; align-items: center; gap: 0.75rem; transition: background 0.2s, color 0.2s; }
+    .sidebar .logout-btn { color: #f87171; font-weight: 500; border-radius: 0.75rem; padding: 0.75rem 1rem; margin-top: auto; background: none; border: none; display: flex; align-items: center; gap: 0.75rem; transition: background 0.2s, color 0.2s; font-size: 0.95em; }
     .sidebar .logout-btn:hover { background: #7f1d1d22; color: #f87171; }
-    .main-content { margin-left: 260px; min-height: 100vh; background: #0f172a; position: relative; z-index: 1; display: flex; flex-direction: column; }
+    .main-content { margin-left: 260px; min-height: 100vh; background: #0f172a; position: relative; z-index: 1; display: flex; flex-direction: column; font-size: 0.93rem; }
     .dashboard-header { border-bottom: 1px solid #1e293b; padding: 1.5rem 2rem 1rem 2rem; background: rgba(17,24,39,0.85); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
-    .dashboard-header .logo { height: 48px; }
-    .dashboard-header .back-link { color: #38bdf8; font-weight: 500; text-decoration: none; margin-left: 1.5rem; transition: color 0.2s; }
+    .dashboard-header .logo { height: 48px; font-size: 0.95em; }
+    .dashboard-header .back-link { color: #38bdf8; font-weight: 500; text-decoration: none; margin-left: 1.5rem; transition: color 0.2s; font-size: 0.95em; }
     .dashboard-header .back-link:hover { color: #0ea5e9; text-decoration: underline; }
-    .dashboard-content-wrapper { max-width: 900px; width: 100%; margin: 0 auto; padding: 0 1rem; }
+    .dashboard-content-wrapper { max-width: 900px; width: 100%; margin: 0 auto; padding: 0 1rem; font-size: 0.91rem; }
     .portfolio-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem; }
-    .portfolio-card { background: linear-gradient(135deg, #2563eb22 0%, #0ea5e922 100%); border: 1px solid #2563eb33; border-radius: 1.25rem; padding: 2rem 1.5rem 1.5rem 1.5rem; box-shadow: 0 6px 32px 0 rgba(37,99,235,0.10), 0 1.5px 8px 0 rgba(31,41,55,0.10); color: #e5e7eb; position: relative; min-height: 160px; display: flex; flex-direction: column; justify-content: space-between; transition: box-shadow 0.2s, border 0.2s, background 0.2s; overflow: hidden; }
-    .portfolio-card .card-title { font-size: 1.08rem; color: #a1a1aa; font-weight: 600; margin-bottom: 0.5rem; letter-spacing: 0.01em; }
-    .portfolio-card .card-value { font-size: 2.3rem; font-weight: 800; color: #fff; margin-bottom: 0.5rem; letter-spacing: 0.01em; }
-    .portfolio-card .card-footer { font-size: 1rem; color: #38d39f; font-weight: 500; }
-    .withdraw-btn { font-size: 1.05rem; border-radius: 0.75rem; padding: 0.6rem 1.5rem; margin-top: 1rem; }
+    .portfolio-card { background: linear-gradient(135deg, #2563eb22 0%, #0ea5e922 100%); border: 1px solid #2563eb33; border-radius: 1.25rem; padding: 2rem 1.5rem 1.5rem 1.5rem; box-shadow: 0 6px 32px 0 rgba(37,99,235,0.10), 0 1.5px 8px 0 rgba(31,41,55,0.10); color: #e5e7eb; position: relative; min-height: 160px; display: flex; flex-direction: column; justify-content: space-between; transition: box-shadow 0.2s, border 0.2s, background 0.2s; overflow: hidden; font-size: 0.91em; }
+    .portfolio-card .card-title { font-size: 0.98rem; color: #a1a1aa; font-weight: 600; margin-bottom: 0.5rem; letter-spacing: 0.01em; }
+    .portfolio-card .card-value { font-size: 1.5rem; font-weight: 800; color: #fff; margin-bottom: 0.5rem; letter-spacing: 0.01em; }
+    .portfolio-card .card-footer { font-size: 0.93rem; color: #38d39f; font-weight: 500; }
+    .withdraw-btn { font-size: 0.97rem; border-radius: 0.75rem; padding: 0.5rem 1.1rem; margin-top: 1rem; }
     .table-responsive { overflow-x: auto; }
-    .table { min-width: 600px; }
+    .table { min-width: 600px; font-size: 0.89rem; }
+    .table th, .table td { padding: 0.28rem 0.35rem; }
     @media (max-width: 991px) {
       .sidebar { left: -260px; }
       .sidebar.active { left: 0; }
       .main-content { margin-left: 0; }
-      .dashboard-content-wrapper { max-width: 100vw; margin: 0; padding: 0 0.3rem; }
+      .dashboard-content-wrapper { max-width: 100vw; margin: 0; padding: 0 0.3rem; font-size: 0.89rem; }
     }
     @media (max-width: 767px) {
-      .dashboard-content-wrapper { padding: 0 0.1rem; }
+      .dashboard-content-wrapper { padding: 0 0.1rem; font-size: 0.87rem; }
       .portfolio-cards { grid-template-columns: 1fr; gap: 0.7rem; }
-      .portfolio-card { padding: 1rem 0.5rem 0.8rem 0.5rem; min-height: 150px; font-size: 0.97rem; }
+      .portfolio-card { padding: 1rem 0.5rem 0.8rem 0.5rem; min-height: 150px; font-size: 0.89em; }
     }
     @media (max-width: 575px) {
-      .dashboard-content-wrapper { padding: 0 0.05rem; }
-      .portfolio-card { padding: 0.5rem 0.1rem 0.5rem 0.1rem; min-height: 100px; font-size: 0.91rem; }
-      .table { font-size: 0.93rem; min-width: 480px; }
-      .table th, .table td { padding: 0.4rem 0.5rem; }
+      .dashboard-content-wrapper { padding: 0 0.05rem; font-size: 0.85rem; }
+      .portfolio-card { padding: 0.5rem 0.1rem 0.5rem 0.1rem; min-height: 100px; font-size: 0.87em; }
+      .table { font-size: 0.85rem; min-width: 480px; }
+      .table th, .table td { padding: 0.22rem 0.28rem; }
     }
     .sidebar-mobile-overlay {
       position: fixed;
@@ -141,65 +175,21 @@ $sidebarLinks = [
     }
     .dashboard-footer {
       border-top: 1px solid #1e293b;
-      padding: 2rem;
+      padding: 1.2rem;
       background: rgba(17,24,39,0.85);
       color: #a1a1aa;
       text-align: center;
       margin-top: auto;
+      font-size: 0.89em;
     }
   </style>
 </head>
 <body>
-  <!-- Sidebar -->
-  <div id="sidebar" class="sidebar">
-    <div class="logo mb-4">
-      <img src="/vault-logo-new.png" alt="Vault Logo" height="48" loading="lazy">
-    </div>
-    <?php foreach ($sidebarLinks as $link): ?>
-      <a href="<?=$link['href']?>" class="nav-link<?=basename($_SERVER['PHP_SELF']) === basename($link['href']) ? ' active' : ''?>">
-        <i class="bi <?=$link['icon']?>"></i> <?=$link['label']?>
-      </a>
-    <?php endforeach; ?>
-    <form method="get" class="mt-auto">
-      <button type="submit" name="logout" class="logout-btn"><i class="bi bi-box-arrow-right"></i> Logout</button>
-    </form>
-  </div>
+  <?php include 'user/sidebar.php'; ?>
   <!-- Mobile Sidebar Overlay (after sidebar) -->
   <div id="sidebarOverlay" class="sidebar-mobile-overlay"></div>
   <div class="main-content">
-    <header class="dashboard-header d-flex align-items-center justify-content-between">
-      <div class="d-flex align-items-center">
-        <button class="btn btn-outline-info d-lg-none me-3" id="sidebarToggle" aria-label="Open sidebar">
-          <i class="bi bi-list" style="font-size:1.7rem;"></i>
-        </button>
-        <img src="/vault-logo-new.png" alt="Vault Logo" class="logo me-3">
-        <a href="user-dashboard.php" class="back-link"><i class="bi bi-arrow-left"></i> Back to Dashboard</a>
-      </div>
-      <div>
-        <div class="dropdown">
-          <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-            <img src="<?=$avatar?>" alt="Profile" width="40" height="40" class="rounded-circle me-2" style="object-fit:cover;">
-            <span class="d-none d-md-inline text-white fw-semibold">Profile</span>
-          </a>
-          <ul class="dropdown-menu dropdown-menu-end shadow profile-dropdown-menu" aria-labelledby="profileDropdown">
-            <li class="px-3 py-2 border-bottom mb-1" style="min-width:220px;">
-              <div class="fw-semibold text-dark mb-0" style="font-size:1.05rem;"><?=$displayName?></div>
-              <div class="text-muted" style="font-size:0.95rem;word-break:break-all;">
-                <?=htmlspecialchars($email)?></div>
-            </li>
-            <li><a class="dropdown-item" href="profile.php"><i class="bi bi-person me-2"></i>Profile</a></li>
-            <li><a class="dropdown-item" href="account-settings.php"><i class="bi bi-gear me-2"></i>Account Settings</a></li>
-            <li><a class="dropdown-item" href="change-password.php"><i class="bi bi-key me-2"></i>Change Password</a></li>
-            <li><a class="dropdown-item" href="my-activity.php"><i class="bi bi-activity me-2"></i>My Activity</a></li>
-            <li><a class="dropdown-item d-flex align-items-center justify-content-between" href="notifications.php"><span><i class="bi bi-bell me-2"></i>Notifications</span></a></li>
-            <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item" href="support.php"><i class="bi bi-question-circle me-2"></i>Support</a></li>
-            <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item text-danger" href="?logout=1"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
-          </ul>
-        </div>
-      </div>
-    </header>
+    <?php include 'user/header.php'; ?>
     <main class="flex-grow-1 p-4">
       <div class="dashboard-content-wrapper mx-auto">
         <h2 class="mb-4 text-info fw-bold">Withdraw Funds</h2>
@@ -255,14 +245,7 @@ $sidebarLinks = [
         </div>
       </div>
     </main>
-    <footer class="dashboard-footer">
-      <img src="/vault-logo-new.png" alt="Vault Logo" height="32" class="mb-2">
-      <div class="mb-2">
-        <a href="plans.php" class="text-info me-3">Staking Plans</a>
-        <a href="roadmap.php" class="text-info">Roadmap</a>
-      </div>
-      <div>&copy; <?=date('Y')?> Vault. All rights reserved.</div>
-    </footer>
+    <?php include 'user/footer.php'; ?>
   </div>
   <!-- Withdraw Modal -->
   <div class="modal fade" id="withdrawModal" tabindex="-1" aria-labelledby="withdrawModalLabel" aria-hidden="true">
