@@ -92,32 +92,24 @@ function usdt_placeholder($amount) {
     .referrals-table tr:nth-child(even) td { background: #1e2330; }
     .referrals-table tr:hover td { background: #232b3b; color: #fff; transition: background 0.18s, color 0.18s; }
     .referrals-table tr:last-child td { border-bottom: none; }
-    @media (max-width: 991px) { .sidebar { left: -260px; } .sidebar.active { left: 0; } .main-content { margin-left: 0; } .referral-section { padding: 1.2rem 0.5rem; } }
+    @media (max-width: 991px) { .sidebar { left: -260px; } .sidebar.open { left: 0; } .main-content { margin-left: 0; } .referral-section { padding: 1.2rem 0.5rem; } .sidebar-close-btn { display: block !important; } }
     @media (max-width: 767px) { .referral-section { padding: 0.7rem 0.2rem; } .referral-stats { flex-direction: column; gap: 1rem; } }
     @media (max-width: 575px) { .referral-section { padding: 0.5rem 0.1rem; } .referral-stats { flex-direction: column; gap: 0.7rem; } .referrals-table { font-size: 0.93rem; } .referrals-table th, .referrals-table td { padding: 0.4rem 0.5rem; } }
     .sol-value { font-size: 0.95em; color: #38bdf8; font-weight: 600; }
     .usdt-convert { display: block; font-size: 0.6em; color: #94a3b8; margin-top: 0.1em; }
+    .sidebar-mobile-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 2000; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+    .sidebar-mobile-overlay.active { opacity: 1; pointer-events: auto; }
+    .sidebar-close-btn { position:absolute;top:14px;right:14px;display:none;font-size:2rem;background:none;border:none;color:#fff;z-index:2100;line-height:1;cursor:pointer; }
   </style>
 </head>
 <body>
   <!-- Sidebar -->
-  <div id="sidebar" class="sidebar">
+  <div class="sidebar" id="sidebar" aria-label="Sidebar navigation">
+    <button type="button" class="sidebar-close-btn" aria-label="Close sidebar" onclick="closeSidebar()" style="position:absolute;top:14px;right:14px;display:none;font-size:2rem;background:none;border:none;color:#fff;z-index:2100;line-height:1;cursor:pointer;">&times;</button>
     <div class="logo mb-4">
       <img src="/vault-logo-new.png" alt="Vault Logo" height="48" loading="lazy">
     </div>
-    <?php
-    $sidebarLinks = [
-      ['href' => 'user-dashboard.php', 'label' => 'Dashboard', 'icon' => 'bi-house'],
-      ['href' => 'plans.php', 'label' => 'Plans', 'icon' => 'bi-layers'],
-      ['href' => 'deposits.php', 'label' => 'Deposits', 'icon' => 'bi-download'],
-      ['href' => 'withdrawals.php', 'label' => 'Withdrawals', 'icon' => 'bi-upload'],
-      ['href' => 'transactions.php', 'label' => 'Transactions', 'icon' => 'bi-list'],
-      ['href' => 'referral.php', 'label' => 'Referral', 'icon' => 'bi-people'],
-      ['href' => 'settings.php', 'label' => 'Settings', 'icon' => 'bi-gear'],
-      ['href' => 'profile.php', 'label' => 'Profile', 'icon' => 'bi-person'],
-      ['href' => 'support.php', 'icon' => 'bi-question-circle', 'label' => 'Support'],
-    ];
-    foreach ($sidebarLinks as $link): ?>
+    <?php foreach ($sidebarLinks as $link): ?>
       <a href="<?=$link['href']?>" class="nav-link<?=basename($_SERVER['PHP_SELF']) === basename($link['href']) ? ' active' : ''?>">
         <i class="bi <?=$link['icon']?>"></i> <?=$link['label']?>
       </a>
@@ -126,6 +118,7 @@ function usdt_placeholder($amount) {
       <button type="submit" name="logout" class="logout-btn"><i class="bi bi-box-arrow-right"></i> Logout</button>
     </form>
   </div>
+  <div id="sidebarOverlay" class="sidebar-mobile-overlay"></div>
   <div class="main-content">
     <?php include 'user/header.php'; ?>
     <main class="flex-grow-1 p-4">
@@ -206,13 +199,13 @@ function usdt_placeholder($amount) {
     var sidebar = document.getElementById('sidebar');
     var sidebarOverlay = document.getElementById('sidebarOverlay');
     var sidebarToggle = document.getElementById('sidebarToggle');
-    var sidebarClose = document.getElementById('sidebarClose');
+    var sidebarCloseBtn = document.querySelector('.sidebar-close-btn');
     function openSidebar() {
-      sidebar.classList.add('active');
+      sidebar.classList.add('open');
       sidebarOverlay.classList.add('active');
     }
     function closeSidebar() {
-      sidebar.classList.remove('active');
+      sidebar.classList.remove('open');
       sidebarOverlay.classList.remove('active');
     }
     if (sidebarToggle) {
@@ -221,18 +214,12 @@ function usdt_placeholder($amount) {
     if (sidebarOverlay) {
       sidebarOverlay.addEventListener('click', closeSidebar);
     }
+    if (sidebarCloseBtn) {
+      sidebarCloseBtn.addEventListener('click', closeSidebar);
+    }
     document.querySelectorAll('.sidebar .nav-link').forEach(function(link) {
       link.addEventListener('click', function() { if (window.innerWidth < 992) closeSidebar(); });
     });
-    window.addEventListener('resize', function() {
-      if (window.innerWidth >= 992) {
-        sidebar.classList.remove('active');
-        sidebarOverlay.classList.remove('active');
-      }
-      handleSidebarCloseBtn(); // Update close button visibility on resize
-    });
-    document.addEventListener('DOMContentLoaded', handleSidebarCloseBtn); // Initial call for DOMContentLoaded
-    if (sidebarClose) sidebarClose.addEventListener('click', closeSidebar);
   </script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>

@@ -327,8 +327,13 @@ function usdt_placeholder($amount) {
     }
     @media (max-width: 991px) {
       .sidebar { left: -260px; }
-      .sidebar.active { left: 0; }
+      .sidebar.open { left: 0; }
       .main-content { margin-left: 0; }
+      .dashboard-content-wrapper { max-width: 100vw; margin: 0; padding: 0 0.3rem; font-size: 0.91rem; }
+      .sidebar-close-btn { display: block !important; }
+    }
+    @media (min-width: 992px) {
+      .sidebar-close-btn { display: none !important; }
     }
     .sidebar-mobile-overlay {
       position: fixed;
@@ -498,12 +503,6 @@ function usdt_placeholder($amount) {
       font-size: 0.65em;
       color: #38bdf8;
       font-weight: 600;
-    }
-    @media (max-width: 991px) {
-      .sidebar-close-btn { display: block !important; }
-    }
-    @media (min-width: 992px) {
-      .sidebar-close-btn { display: none !important; }
     }
   </style>
 </head>
@@ -841,29 +840,49 @@ function usdt_placeholder($amount) {
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script>
-    var sidebar = document.getElementById('sidebar');
-    var sidebarOverlay = document.getElementById('sidebarOverlay');
-    var sidebarToggle = document.getElementById('sidebarToggle');
-    var sidebarCloseBtn = document.querySelector('.sidebar-close-btn');
-    function openSidebar() {
-      sidebar.classList.add('active');
-      sidebarOverlay.classList.add('active');
-    }
-    function closeSidebar() {
-      sidebar.classList.remove('active');
-      sidebarOverlay.classList.remove('active');
-    }
-    if (sidebarToggle) {
-      sidebarToggle.addEventListener('click', openSidebar);
-    }
-    if (sidebarOverlay) {
-      sidebarOverlay.addEventListener('click', closeSidebar);
-    }
-    if (sidebarCloseBtn) {
-      sidebarCloseBtn.addEventListener('click', closeSidebar);
-    }
-    document.querySelectorAll('.sidebar .nav-link').forEach(function(link) {
-      link.addEventListener('click', function() { if (window.innerWidth < 992) closeSidebar(); });
+    document.addEventListener('DOMContentLoaded', function() {
+      var sidebar = document.getElementById('sidebar');
+      var sidebarOverlay = document.getElementById('sidebarOverlay');
+      var sidebarToggle = document.getElementById('sidebarToggle');
+      var sidebarCloseBtn = document.querySelector('.sidebar-close-btn');
+      function openSidebar() {
+        sidebar.classList.add('open');
+        sidebarOverlay.classList.add('active');
+        // Show close button on mobile
+        if (window.innerWidth < 992 && sidebarCloseBtn) {
+          sidebarCloseBtn.style.display = 'block';
+        }
+      }
+      function closeSidebar() {
+        sidebar.classList.remove('open');
+        sidebarOverlay.classList.remove('active');
+        // Hide close button on mobile
+        if (window.innerWidth < 992 && sidebarCloseBtn) {
+          sidebarCloseBtn.style.display = 'none';
+        }
+      }
+      if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', openSidebar);
+      }
+      if (sidebarOverlay) {
+        sidebarOverlay.addEventListener('click', closeSidebar);
+      }
+      if (sidebarCloseBtn) {
+        sidebarCloseBtn.addEventListener('click', closeSidebar);
+      }
+      document.querySelectorAll('.sidebar .nav-link').forEach(function(link) {
+        link.addEventListener('click', function() { if (window.innerWidth < 992) closeSidebar(); });
+      });
+      // Ensure close button is hidden by default on mobile
+      if (window.innerWidth < 992 && sidebarCloseBtn) {
+        sidebarCloseBtn.style.display = 'none';
+      }
+      // Optional: Hide sidebar if window resized to desktop
+      window.addEventListener('resize', function() {
+        if (window.innerWidth >= 992) {
+          closeSidebar();
+        }
+      });
     });
 
     // Notification functionality

@@ -12,7 +12,6 @@ $success = $error = '';
 $stmt = $pdo->prepare("SELECT available_balance FROM user_balances WHERE user_id = ?");
 $stmt->execute([$user_id]);
 $availableBalance = (float)($stmt->fetchColumn() ?: 0);
-// Fetch withdrawable balance from user_balances
 $stmt = $pdo->prepare("SELECT withdrawable_balance FROM user_balances WHERE user_id = ?");
 $stmt->execute([$user_id]);
 $withdrawableBalance = (float)($stmt->fetchColumn() ?: 0);
@@ -31,6 +30,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['withdraw_amount'])) {
     if ($stmt->execute([$user_id, $amount, $desc])) {
       $stmt = $pdo->prepare("UPDATE user_balances SET available_balance = available_balance - ? WHERE user_id = ?");
       $stmt->execute([$amount, $user_id]);
+      $pdo->prepare('INSERT INTO notifications (user_id, title, message) VALUES (?, ?, ?)')->execute([
+        $user_id,
+        'Withdrawal Submitted',
+        'Your withdrawal request of ' . $amount . ' SOL is pending admin approval.'
+      ]);
       header("Location: withdrawals.php?success=1");
       exit;
     } else {
@@ -38,15 +42,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['withdraw_amount'])) {
     }
   }
 }
-// Show success message if redirected
 if (isset($_GET['success']) && $_GET['success'] == '1') {
   $success = 'Withdrawal request submitted!';
 }
-// Fetch withdrawal history
 $stmt = $pdo->prepare("SELECT amount, status, description, created_at FROM transactions WHERE user_id = ? AND type = 'withdrawal' ORDER BY created_at DESC");
 $stmt->execute([$user_id]);
 $withdrawals = $stmt->fetchAll(PDO::FETCH_ASSOC);
-// Fetch user info for sidebar/header
 $stmt = $pdo->prepare('SELECT first_name, last_name, email, avatar, username FROM users WHERE id = ?');
 $stmt->execute([$user_id]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -89,46 +90,75 @@ function usdt_placeholder($amount) {
     .table-responsive { overflow-x: auto; }
     .table { min-width: 600px; font-size: 0.92rem; }
     .table th, .table td { padding: 0.35rem 0.5rem; }
-    @media (max-width: 991px) { .sidebar { left: -260px; } .sidebar.active { left: 0; } .main-content { margin-left: 0; } .dashboard-content-wrapper { max-width: 100vw; margin: 0; padding: 0 0.3rem; font-size: 0.91rem; } }
-    @media (max-width: 767px) { .dashboard-content-wrapper { padding: 0 0.1rem; font-size: 0.89rem; } }
-    @media (max-width: 575px) { .dashboard-content-wrapper { padding: 0 0.05rem; font-size: 0.87rem; } .table { font-size: 0.87rem; min-width: 480px; } .table th, .table td { padding: 0.28rem 0.35rem; } }
-    .sidebar-mobile-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 2000; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
-    .sidebar-mobile-overlay.active { opacity: 1; pointer-events: auto; }
-    .dashboard-footer { border-top: 1px solid #1e293b; padding: 2rem; background: rgba(17,24,39,0.85); color: #a1a1aa; text-align: center; margin-top: auto; }
+    @media (max-width: 991px) {
+      .sidebar { left: -260px; }
+      .sidebar.open { left: 0; }
+      .main-content { margin-left: 0; }
+      .dashboard-content-wrapper { max-width: 100vw; margin: 0; padding: 0 0.3rem; font-size: 0.91rem; }
+      .sidebar-close-btn { display: block !important; }
+    }
+    @media (max-width: 767px) {
+      .dashboard-content-wrapper { padding: 0 0.1rem; font-size: 0.89rem; }
+    }
+    @media (max-width: 575px) {
+      .dashboard-content-wrapper { padding: 0 0.05rem; font-size: 0.87rem; }
+      .table { font-size: 0.87rem; min-width: 480px; }
+      .table th, .table td { padding: 0.28rem 0.35rem; }
+    }
+    .sidebar-mobile-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 2000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .sidebar-mobile-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .dashboard-footer {
+      border-top: 1px solid #1e293b;
+      padding: 2rem;
+      background: rgba(17,24,39,0.85);
+      color: #a1a1aa;
+      text-align: center;
+      margin-top: auto;
+    }
     .sol-value { font-size: 0.95em; color: #38bdf8; font-weight: 600; }
     .usdt-convert { display: block; font-size: 0.6em; color: #94a3b8; margin-top: 0.1em; transition: color 0.3s ease; }
-    /* Make withdrawal form labels white */
     #withdrawForm .form-label { color: #fff !important; }
   </style>
 </head>
 <body>
-   <!-- Sidebar -->
-   <div id="sidebar" class="sidebar">
-     <div class="logo mb-4">
-       <img src="/vault-logo-new.png" alt="Vault Logo" height="48" loading="lazy">
-     </div>
-     <?php
-     $sidebarLinks = [
-       ['href' => 'user-dashboard.php', 'label' => 'Dashboard', 'icon' => 'bi-house'],
-       ['href' => 'plans.php', 'label' => 'Plans', 'icon' => 'bi-layers'],
-       ['href' => 'deposits.php', 'label' => 'Deposits', 'icon' => 'bi-download'],
-       ['href' => 'withdrawals.php', 'label' => 'Withdrawals', 'icon' => 'bi-upload'],
-       ['href' => 'transactions.php', 'label' => 'Transactions', 'icon' => 'bi-list'],
-       ['href' => 'referral.php', 'label' => 'Referral', 'icon' => 'bi-people'],
-       ['href' => 'account-settings.php', 'label' => 'Settings', 'icon' => 'bi-gear'],
-       ['href' => 'profile.php', 'label' => 'Profile', 'icon' => 'bi-person'],
-       ['href' => 'support.php', 'icon' => 'bi-question-circle', 'label' => 'Support'],
-     ];
-     foreach ($sidebarLinks as $link): ?>
-       <a href="<?=$link['href']?>" class="nav-link<?=basename($_SERVER['PHP_SELF']) === basename($link['href']) ? ' active' : ''?>">
-         <i class="bi <?=$link['icon']?>"></i> <?=$link['label']?>
-       </a>
-     <?php endforeach; ?>
-     <form method="get" class="mt-auto">
-       <button type="submit" name="logout" class="logout-btn"><i class="bi bi-box-arrow-right"></i> Logout</button>
-     </form>
-   </div>
-  <!-- Mobile Sidebar Overlay (after sidebar) -->
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar" aria-label="Sidebar navigation">
+    <button type="button" class="sidebar-close-btn" aria-label="Close sidebar" onclick="closeSidebar()" style="position:absolute;top:14px;right:14px;display:none;font-size:2rem;background:none;border:none;color:#fff;z-index:2100;line-height:1;cursor:pointer;">&times;</button>
+    <div class="logo mb-4">
+      <img src="/vault-logo-new.png" alt="Vault Logo" height="48" loading="lazy">
+    </div>
+    <?php
+    $sidebarLinks = [
+      ['href' => 'user-dashboard.php', 'label' => 'Dashboard', 'icon' => 'bi-house'],
+      ['href' => 'plans.php', 'label' => 'Plans', 'icon' => 'bi-layers'],
+      ['href' => 'deposits.php', 'label' => 'Deposits', 'icon' => 'bi-download'],
+      ['href' => 'withdrawals.php', 'label' => 'Withdrawals', 'icon' => 'bi-upload'],
+      ['href' => 'transactions.php', 'label' => 'Transactions', 'icon' => 'bi-list'],
+      ['href' => 'referral.php', 'label' => 'Referral', 'icon' => 'bi-people'],
+      ['href' => 'account-settings.php', 'label' => 'Settings', 'icon' => 'bi-gear'],
+      ['href' => 'profile.php', 'label' => 'Profile', 'icon' => 'bi-person'],
+      ['href' => 'support.php', 'label' => 'Support', 'icon' => 'bi-question-circle'],
+    ];
+    foreach ($sidebarLinks as $link): ?>
+      <a href="<?=$link['href']?>" class="nav-link<?=basename($_SERVER['PHP_SELF']) === basename($link['href']) ? ' active' : ''?>">
+        <i class="bi <?=$link['icon']?>"></i> <?=$link['label']?>
+      </a>
+    <?php endforeach; ?>
+    <form method="get" class="mt-auto">
+      <button type="submit" name="logout" class="logout-btn"><i class="bi bi-box-arrow-right"></i> Logout</button>
+    </form>
+  </div>
   <div id="sidebarOverlay" class="sidebar-mobile-overlay"></div>
   <div class="main-content">
     <?php include 'user/header.php'; ?>
@@ -139,13 +169,15 @@ function usdt_placeholder($amount) {
           <div class="col-md-6 mb-2">
             <div class="p-3 bg-dark rounded-3 border border-info">
               <div class="text-muted">Available Balance</div>
-              <div class="fw-bold" style="font-size:1.2rem;color:#fff !important;"><?=sol_display($availableBalance)?></div>
+              <div class="fw-bold" style="font-size:1.2rem;color:#fff !important;">
+                <?=sol_display($availableBalance)?></div>
             </div>
           </div>
           <div class="col-md-6 mb-2">
             <div class="p-3 bg-dark rounded-3 border border-success">
               <div class="text-muted">Withdrawable Balance <span class="text-warning small">(You can only withdraw from this)</span></div>
-              <div class="fw-bold" style="font-size:1.2rem;color:#fff !important;"><?=sol_display($withdrawableBalance)?></div>
+              <div class="fw-bold" style="font-size:1.2rem;color:#fff !important;">
+                <?=sol_display($withdrawableBalance)?></div>
             </div>
           </div>
         </div>
@@ -229,16 +261,16 @@ function usdt_placeholder($amount) {
   </div>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // Sidebar toggle/overlay (copied from deposits.php)
     var sidebar = document.getElementById('sidebar');
     var sidebarOverlay = document.getElementById('sidebarOverlay');
     var sidebarToggle = document.getElementById('sidebarToggle');
+    var sidebarCloseBtn = document.querySelector('.sidebar-close-btn');
     function openSidebar() {
-      sidebar.classList.add('active');
+      sidebar.classList.add('open');
       sidebarOverlay.classList.add('active');
     }
     function closeSidebar() {
-      sidebar.classList.remove('active');
+      sidebar.classList.remove('open');
       sidebarOverlay.classList.remove('active');
     }
     if (sidebarToggle) {
@@ -247,21 +279,26 @@ function usdt_placeholder($amount) {
     if (sidebarOverlay) {
       sidebarOverlay.addEventListener('click', closeSidebar);
     }
+    if (sidebarCloseBtn) {
+      sidebarCloseBtn.addEventListener('click', closeSidebar);
+    }
     document.querySelectorAll('.sidebar .nav-link').forEach(function(link) {
-      link.addEventListener('click', function() {
-        if (window.innerWidth < 992) closeSidebar();
-      });
-    });
-    window.addEventListener('resize', function() {
-      if (window.innerWidth >= 992) {
-        sidebar.classList.remove('d-none');
-        sidebar.classList.add('d-flex');
-        sidebarOverlay.classList.remove('active');
-      } else {
-        sidebar.classList.remove('d-flex');
-        sidebar.classList.add('d-none');
-      }
+      link.addEventListener('click', function() { if (window.innerWidth < 992) closeSidebar(); });
     });
   </script>
+  <script>
+// Confirmation dialog before submitting withdrawal form
+document.addEventListener('DOMContentLoaded', function() {
+  var withdrawForm = document.getElementById('withdrawForm');
+  if (withdrawForm) {
+    withdrawForm.addEventListener('submit', function(e) {
+      if (!confirm('Are you sure you want to submit this withdrawal?')) {
+        e.preventDefault();
+        return false;
+      }
+    });
+  }
+});
+</script>
 </body>
 </html> 

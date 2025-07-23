@@ -86,6 +86,7 @@ $stmt->execute([$user_id]);
 $user_twofa = $stmt->fetch(PDO::FETCH_ASSOC);
 $twofa_enabled = $user_twofa ? (int)$user_twofa['twofa_enabled'] : 0;
 ?>
+<?php include 'user/header.php'; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -118,13 +119,19 @@ $twofa_enabled = $user_twofa ? (int)$user_twofa['twofa_enabled'] : 0;
     @media (max-width: 991px) { .sidebar { left: -260px; } .sidebar.active { left: 0; } .main-content { margin-left: 0; } }
     .sidebar-mobile-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: 2000; display: none; }
     .sidebar-mobile-overlay.active { display: block; }
+    @media (max-width: 991px) {
+      .sidebar { left: -260px !important; transition: left 0.3s; min-width: 220px !important; max-width: 220px !important; box-shadow: 2px 0 16px #0004; }
+      .sidebar.open { left: 0 !important; z-index: 2000 !important; }
+      .sidebar-close-btn { display: block !important; }
+    }
   </style>
 </head>
 <body>
   <!-- Mobile Sidebar Overlay -->
-  <div id="sidebarOverlay" class="sidebar-mobile-overlay"></div>
+  <div id="sidebarOverlay" class="sidebar-mobile-overlay" aria-label="Sidebar overlay" style="position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 2000; opacity: 0; pointer-events: none; transition: opacity 0.2s;"></div>
   <!-- Sidebar -->
-  <div id="sidebar" class="sidebar d-none d-lg-flex flex-column">
+  <div class="sidebar" id="sidebar" aria-label="Sidebar navigation" style="background: rgba(10,16,30,0.95); border-right: 1px solid #1e293b; min-height: 100vh; width: 260px; position: fixed; top: 0; left: 0; z-index: 100; padding: 2rem 1.5rem 1.5rem 1.5rem; display: flex; flex-direction: column; transition: left 0.3s;">
+    <button type="button" class="sidebar-close-btn" aria-label="Close sidebar" onclick="closeSidebar()" style="position:absolute;top:14px;right:14px;display:none;font-size:2rem;background:none;border:none;color:#fff;z-index:2100;line-height:1;cursor:pointer;">&times;</button>
     <div class="logo mb-4">
       <img src="/vault-logo-new.png" alt="Vault Logo" height="48">
     </div>
@@ -138,40 +145,6 @@ $twofa_enabled = $user_twofa ? (int)$user_twofa['twofa_enabled'] : 0;
     </form>
   </div>
   <div class="main-content">
-    <header class="dashboard-header d-flex align-items-center justify-content-between">
-      <div class="d-flex align-items-center">
-        <!-- Hamburger for mobile -->
-        <button class="btn btn-outline-info d-lg-none me-3" id="sidebarToggle" aria-label="Open sidebar">
-          <i class="bi bi-list" style="font-size:1.7rem;"></i>
-        </button>
-        <img src="/vault-logo-new.png" alt="Vault Logo" class="logo me-3">
-      </div>
-      <div><!-- Wallet connection placeholder -->
-        <div class="dropdown">
-          <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-            <img src="<?=$avatar?>" alt="Profile" width="40" height="40" class="rounded-circle me-2" style="object-fit:cover;">
-            <span class="d-none d-md-inline text-white fw-semibold">Profile</span>
-          </a>
-          <ul class="dropdown-menu dropdown-menu-end shadow profile-dropdown-menu" aria-labelledby="profileDropdown">
-            <li class="px-3 py-2 border-bottom mb-1" style="min-width:220px;">
-              <div class="fw-semibold text-dark mb-0" style="font-size:1.05rem;"><?=$displayName?></div>
-              <div class="text-muted" style="font-size:0.95rem;word-break:break-all;">
-                <?=htmlspecialchars($user['email'])?>
-              </div>
-            </li>
-            <li><a class="dropdown-item" href="profile.php"><i class="bi bi-person me-2"></i>Profile</a></li>
-            <li><a class="dropdown-item" href="account-settings.php"><i class="bi bi-gear me-2"></i>Account Settings</a></li>
-            <li><a class="dropdown-item" href="change-password.php"><i class="bi bi-key me-2"></i>Change Password</a></li>
-            <li><a class="dropdown-item" href="my-activity.php"><i class="bi bi-activity me-2"></i>My Activity</a></li>
-            <li><a class="dropdown-item d-flex align-items-center justify-content-between" href="notifications.php"><span><i class="bi bi-bell me-2"></i>Notifications</span></a></li>
-            <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item" href="support.php"><i class="bi bi-question-circle me-2"></i>Support</a></li>
-            <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item text-danger" href="?logout=1"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
-          </ul>
-        </div>
-      </div>
-    </header>
     <main class="flex-grow-1 p-4">
       <div class="row g-4 justify-content-center">
         <div class="col-12 col-md-6 col-lg-4">
@@ -236,19 +209,21 @@ $twofa_enabled = $user_twofa ? (int)$user_twofa['twofa_enabled'] : 0;
   </div>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // Mobile sidebar toggle/overlay (copied from dashboard)
-    const sidebar = document.getElementById('sidebar');
-    const sidebarOverlay = document.getElementById('sidebarOverlay');
-    const sidebarToggle = document.getElementById('sidebarToggle');
+    var sidebar = document.getElementById('sidebar');
+    var sidebarOverlay = document.getElementById('sidebarOverlay');
+    var sidebarToggle = document.getElementById('sidebarToggle');
+    var sidebarCloseBtn = document.querySelector('.sidebar-close-btn');
     function openSidebar() {
-      sidebar.classList.add('active','d-flex');
-      sidebar.classList.remove('d-none');
+      sidebar.classList.add('open');
       sidebarOverlay.classList.add('active');
+      sidebarOverlay.style.opacity = 1;
+      sidebarOverlay.style.pointerEvents = 'auto';
     }
     function closeSidebar() {
-      sidebar.classList.remove('active','d-flex');
+      sidebar.classList.remove('open');
       sidebarOverlay.classList.remove('active');
-      if (window.innerWidth < 992) sidebar.classList.add('d-none');
+      sidebarOverlay.style.opacity = 0;
+      sidebarOverlay.style.pointerEvents = 'none';
     }
     if (sidebarToggle) {
       sidebarToggle.addEventListener('click', openSidebar);
@@ -256,20 +231,11 @@ $twofa_enabled = $user_twofa ? (int)$user_twofa['twofa_enabled'] : 0;
     if (sidebarOverlay) {
       sidebarOverlay.addEventListener('click', closeSidebar);
     }
+    if (sidebarCloseBtn) {
+      sidebarCloseBtn.addEventListener('click', closeSidebar);
+    }
     document.querySelectorAll('.sidebar .nav-link').forEach(function(link) {
-      link.addEventListener('click', function() {
-        if (window.innerWidth < 992) closeSidebar();
-      });
-    });
-    window.addEventListener('resize', function() {
-      if (window.innerWidth >= 992) {
-        sidebar.classList.remove('d-none');
-        sidebar.classList.add('d-flex');
-        sidebarOverlay.classList.remove('active');
-      } else {
-        sidebar.classList.remove('d-flex');
-        sidebar.classList.add('d-none');
-      }
+      link.addEventListener('click', function() { if (window.innerWidth < 992) closeSidebar(); });
     });
     // Progressive enhancement: AJAX save
     document.getElementById('settingsForm').addEventListener('submit', function(e) {

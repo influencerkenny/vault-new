@@ -85,6 +85,7 @@ if ($success) {
     mail($fields['email'], $subject, $body, $headers);
 }
 ?>
+<?php include 'user/header.php'; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>

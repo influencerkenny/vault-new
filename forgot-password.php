@@ -69,6 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
 }
 ?>
+<?php include 'user/header.php'; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>

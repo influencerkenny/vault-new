@@ -144,6 +144,7 @@ $stmt->execute([$user_id]);
 $total_history = $stmt->fetchColumn();
 $total_pages = ceil($total_history / $limit);
 ?>
+<?php include 'user/sidebar.php'; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -495,10 +496,12 @@ $total_pages = ceil($total_history / $limit);
     function openSidebar() {
       sidebar.classList.add('active');
       sidebarOverlay.classList.add('active');
+      if (sidebarToggle) sidebarToggle.classList.add('active');
     }
     function closeSidebar() {
       sidebar.classList.remove('active');
       sidebarOverlay.classList.remove('active');
+      if (sidebarToggle) sidebarToggle.classList.remove('active');
     }
     if (sidebarToggle) {
       sidebarToggle.addEventListener('click', openSidebar);

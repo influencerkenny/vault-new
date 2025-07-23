@@ -35,17 +35,20 @@ if (isset($_SESSION['user_id'])) {
 }
 ?>
 <div class="user-header" style="border-bottom: 1px solid #1e293b; padding: 1.2rem 2rem 1rem 2rem; background: rgba(17,24,39,0.85); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10;">
-  <div class="logo d-flex align-items-center">
-    <img src="<?=htmlspecialchars($logo)?>" alt="Logo" class="me-2" style="height:36px;">
-    <span style="font-weight:700;font-size:1.2rem;color:#38bdf8;"> <?=htmlspecialchars($system_name)?> </span>
+  <div class="d-flex align-items-center">
+    <!-- Sidebar Toggle Button for Mobile -->
+    <button id="sidebarToggle" class="btn btn-outline-info d-md-none me-2" type="button" style="padding: 0.35rem 0.7rem; font-size: 1.5rem; line-height: 1;">
+      <i class="bi bi-list"></i>
+    </button>
+    <div class="logo d-flex align-items-center">
+      <img src="<?=htmlspecialchars($logo)?>" alt="Logo" class="me-2" style="height:36px;">
+      <span style="font-weight:700;font-size:1.2rem;color:#38bdf8;"> <?=htmlspecialchars($system_name)?> </span>
+    </div>
   </div>
   <!-- Add user profile or nav here if needed -->
 </div>
 <header class="dashboard-header d-flex align-items-center justify-content-between">
   <div class="d-flex align-items-center">
-    <button class="btn btn-outline-info d-lg-none me-3" id="sidebarToggle" aria-label="Open sidebar">
-      <i class="bi bi-list" style="font-size:1.7rem;"></i>
-    </button>
     <!-- Logo and Back to Dashboard link removed -->
   </div>
   <div class="d-flex align-items-center gap-2">

@@ -125,9 +125,10 @@ if ($ticket_ids) {
     .reply-file { display: inline-block; margin-top: 0.2em; }
     @media (max-width: 991px) {
       .sidebar { left: -260px; }
-      .sidebar.active { left: 0; }
+      .sidebar.open { left: 0; }
       .main-content { margin-left: 0; }
       .dashboard-content-wrapper { max-width: 100vw; margin: 0; padding: 0 0.3rem; font-size: 0.91rem; }
+      .sidebar-close-btn { display: block !important; }
     }
     @media (max-width: 767px) {
       .dashboard-content-wrapper { padding: 0 0.1rem; font-size: 0.89rem; }
@@ -192,7 +193,8 @@ if ($ticket_ids) {
 </head>
 <body>
   <!-- Sidebar -->
-  <div id="sidebar" class="sidebar">
+  <div class="sidebar" id="sidebar" aria-label="Sidebar navigation">
+    <button type="button" class="sidebar-close-btn" aria-label="Close sidebar" onclick="closeSidebar()" style="position:absolute;top:14px;right:14px;display:none;font-size:2rem;background:none;border:none;color:#fff;z-index:2100;line-height:1;cursor:pointer;">&times;</button>
     <div class="logo mb-4">
       <img src="/vault-logo-new.png" alt="Vault Logo" height="48" loading="lazy">
     </div>
@@ -375,16 +377,16 @@ if ($ticket_ids) {
   </div>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // Sidebar toggle/overlay (copied from deposits.php)
     var sidebar = document.getElementById('sidebar');
     var sidebarOverlay = document.getElementById('sidebarOverlay');
     var sidebarToggle = document.getElementById('sidebarToggle');
+    var sidebarCloseBtn = document.querySelector('.sidebar-close-btn');
     function openSidebar() {
-      sidebar.classList.add('active');
+      sidebar.classList.add('open');
       sidebarOverlay.classList.add('active');
     }
     function closeSidebar() {
-      sidebar.classList.remove('active');
+      sidebar.classList.remove('open');
       sidebarOverlay.classList.remove('active');
     }
     if (sidebarToggle) {
@@ -393,20 +395,11 @@ if ($ticket_ids) {
     if (sidebarOverlay) {
       sidebarOverlay.addEventListener('click', closeSidebar);
     }
+    if (sidebarCloseBtn) {
+      sidebarCloseBtn.addEventListener('click', closeSidebar);
+    }
     document.querySelectorAll('.sidebar .nav-link').forEach(function(link) {
-      link.addEventListener('click', function() {
-        if (window.innerWidth < 992) closeSidebar();
-      });
-    });
-    window.addEventListener('resize', function() {
-      if (window.innerWidth >= 992) {
-        sidebar.classList.remove('d-none');
-        sidebar.classList.add('d-flex');
-        sidebarOverlay.classList.remove('active');
-          } else {
-        sidebar.classList.remove('d-flex');
-        sidebar.classList.add('d-none');
-      }
+      link.addEventListener('click', function() { if (window.innerWidth < 992) closeSidebar(); });
     });
   </script>
 </body>

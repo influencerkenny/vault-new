@@ -83,6 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $showForm) {
   }
 }
 ?>
+<?php include 'user/header.php'; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
