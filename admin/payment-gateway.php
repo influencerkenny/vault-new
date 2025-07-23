@@ -47,6 +47,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $pdo->prepare('UPDATE payment_gateways SET status = "enabled" WHERE id = ?');
         $ok = $stmt->execute([intval($_POST['id'])]);
         $action_success = $ok ? 'Gateway enabled.' : 'Failed to enable gateway.';
+    } elseif (isset($_POST['action'], $_POST['id']) && $_POST['action'] === 'edit_gateway') {
+        // Handle edit gateway
+        $thumbPath = $_POST['existing_thumbnail'] ?? '';
+        if (isset($_FILES['thumbnail']) && $_FILES['thumbnail']['error'] === UPLOAD_ERR_OK) {
+            $ext = strtolower(pathinfo($_FILES['thumbnail']['name'], PATHINFO_EXTENSION));
+            $allowed = ['jpg','jpeg','png','gif','webp'];
+            if (in_array($ext, $allowed)) {
+                $fname = 'gateway_' . time() . '_' . rand(1000,9999) . '.' . $ext;
+                $dest = '../public/' . $fname;
+                if (move_uploaded_file($_FILES['thumbnail']['tmp_name'], $dest)) {
+                    $thumbPath = $fname;
+                }
+            }
+        }
+        $stmt = $pdo->prepare('UPDATE payment_gateways SET name=?, currency=?, rate_to_usd=?, min_amount=?, max_amount=?, instructions=?, user_data_label=?, thumbnail=? WHERE id=?');
+        $ok = $stmt->execute([
+            trim($_POST['name']),
+            trim($_POST['currency']),
+            floatval($_POST['rate_to_usd']),
+            floatval($_POST['min_amount']),
+            floatval($_POST['max_amount']),
+            trim($_POST['instructions']),
+            trim($_POST['user_data_label']),
+            $thumbPath,
+            intval($_POST['id'])
+        ]);
+        $action_success = $ok ? 'Payment gateway updated.' : 'Failed to update gateway.';
     }
 }
 
@@ -163,30 +190,15 @@ $gateways = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <?php endif; ?>
               </td>
               <td>
-                <div class="dropdown">
-                  <button class="btn btn-sm btn-info dropdown-toggle" type="button" id="dropdownMenuButtonGW<?=$gw['id']?>" data-bs-toggle="dropdown" aria-expanded="false">
-                    Actions
-                  </button>
-                  <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="dropdownMenuButtonGW<?=$gw['id']?>">
-                    <?php if ($gw['status'] === 'enabled'): ?>
-                    <li>
-                      <form method="post" style="display:inline;">
-                        <input type="hidden" name="id" value="<?=$gw['id']?>">
-                        <input type="hidden" name="action" value="disable">
-                        <button class="dropdown-item text-danger" type="submit" onclick="return confirm('Disable this gateway?')"><i class="bi bi-x-circle me-2"></i>Disable</button>
-                      </form>
-                    </li>
-                    <?php else: ?>
-                    <li>
-                      <form method="post" style="display:inline;">
-                        <input type="hidden" name="id" value="<?=$gw['id']?>">
-                        <input type="hidden" name="action" value="enable">
-                        <button class="dropdown-item text-success" type="submit" onclick="return confirm('Enable this gateway?')"><i class="bi bi-check-circle me-2"></i>Enable</button>
-                      </form>
-                    </li>
-                    <?php endif; ?>
-                    <!-- Edit action can be implemented here -->
-                  </ul>
+                <div class="d-flex gap-2">
+                  <button class="btn btn-sm btn-info" type="button" onclick='openEditGatewayModal(<?=json_encode($gw)?>)'><i class="bi bi-pencil-square me-1"></i>Edit</button>
+                  <form method="post" style="display:inline;">
+                    <input type="hidden" name="id" value="<?=$gw['id']?>">
+                    <input type="hidden" name="action" value="<?=$gw['status'] === 'enabled' ? 'disable' : 'enable'?>">
+                    <button class="btn btn-sm <?= $gw['status'] === 'enabled' ? 'btn-danger' : 'btn-success' ?>" type="submit" onclick="return confirm('<?=$gw['status'] === 'enabled' ? 'Disable' : 'Enable'?> this gateway?')">
+                      <i class="bi <?=$gw['status'] === 'enabled' ? 'bi-x-circle' : 'bi-check-circle'?> me-1"></i><?=$gw['status'] === 'enabled' ? 'Disable' : 'Enable'?>
+                    </button>
+                  </form>
                 </div>
               </td>
             </tr>
@@ -251,6 +263,63 @@ $gateways = $stmt->fetchAll(PDO::FETCH_ASSOC);
       </div>
     </div>
   </div>
+  <!-- Edit Gateway Modal -->
+  <div class="modal fade" id="editGatewayModal" tabindex="-1" aria-labelledby="editGatewayModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+      <div class="modal-content bg-dark text-light" style="border-radius: 1rem; background: #181f2a; color: #e5e7eb;">
+        <form method="post" enctype="multipart/form-data">
+          <div class="modal-header bg-info text-white" style="border-top-left-radius: 1rem; border-top-right-radius: 1rem; padding: 0.7rem 1rem;">
+            <h6 class="modal-title mb-0" id="editGatewayModalLabel">Edit Payment Gateway</h6>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body" style="padding: 0.8rem 1rem; font-size: 0.97rem; background: #181f2a; color: #e5e7eb;">
+            <input type="hidden" name="action" value="edit_gateway">
+            <input type="hidden" name="id" id="editGatewayId">
+            <input type="hidden" name="existing_thumbnail" id="editGatewayExistingThumb">
+            <div class="mb-3">
+              <label for="editGatewayThumb" class="form-label">Thumbnail (Image)</label>
+              <input type="file" class="form-control" id="editGatewayThumb" name="thumbnail" accept="image/*">
+              <div id="editGatewayThumbPreview" class="mt-2"></div>
+            </div>
+            <div class="mb-3">
+              <label for="editGatewayName" class="form-label">Gateway Name</label>
+              <input type="text" class="form-control" id="editGatewayName" name="name" required>
+            </div>
+            <div class="mb-3">
+              <label for="editGatewayCurrency" class="form-label">Currency</label>
+              <input type="text" class="form-control" id="editGatewayCurrency" name="currency" required>
+            </div>
+            <div class="mb-3">
+              <label for="editGatewayRate" class="form-label">Rate to 1 USD</label>
+              <input type="number" step="0.0001" class="form-control" id="editGatewayRate" name="rate_to_usd" required>
+            </div>
+            <div class="mb-3 row g-2">
+              <div class="col">
+                <label for="editGatewayMin" class="form-label">Minimum</label>
+                <input type="number" step="0.01" class="form-control" id="editGatewayMin" name="min_amount" required>
+              </div>
+              <div class="col">
+                <label for="editGatewayMax" class="form-label">Maximum</label>
+                <input type="number" step="0.01" class="form-control" id="editGatewayMax" name="max_amount" required>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label for="editGatewayInstructions" class="form-label">Deposit Instructions</label>
+              <textarea class="form-control" id="editGatewayInstructions" name="instructions" rows="2" required></textarea>
+            </div>
+            <div class="mb-3">
+              <label for="editGatewayUserData" class="form-label">User Data (e.g. Proof of Payment)</label>
+              <input type="text" class="form-control" id="editGatewayUserData" name="user_data_label" required>
+            </div>
+          </div>
+          <div class="modal-footer" style="padding: 0.5rem 1rem; border-bottom-left-radius: 1rem; border-bottom-right-radius: 1rem; background: #181f2a;">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-info btn-sm">Update Gateway</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     // Sidebar toggle logic (reuse from other admin pages)
@@ -264,6 +333,29 @@ $gateways = $stmt->fetchAll(PDO::FETCH_ASSOC);
     document.querySelectorAll('.sidebar .nav-link').forEach(function(link) {
       link.addEventListener('click', function() { if (window.innerWidth < 992) closeSidebar(); });
     });
+  </script>
+  <!-- Edit Gateway Modal logic -->
+  <script>
+    function openEditGatewayModal(gw) {
+      var modal = new bootstrap.Modal(document.getElementById('editGatewayModal'));
+      document.getElementById('editGatewayId').value = gw.id;
+      document.getElementById('editGatewayName').value = gw.name;
+      document.getElementById('editGatewayCurrency').value = gw.currency;
+      document.getElementById('editGatewayRate').value = gw.rate_to_usd;
+      document.getElementById('editGatewayMin').value = gw.min_amount;
+      document.getElementById('editGatewayMax').value = gw.max_amount;
+      document.getElementById('editGatewayInstructions').value = gw.instructions;
+      document.getElementById('editGatewayUserData').value = gw.user_data_label;
+      document.getElementById('editGatewayExistingThumb').value = gw.thumbnail || '';
+      var thumbPreview = document.getElementById('editGatewayThumbPreview');
+      if (gw.thumbnail) {
+        thumbPreview.innerHTML = '<img src="../public/' + gw.thumbnail + '" alt="Current Thumbnail" style="max-width:60px;max-height:60px;border-radius:6px;">';
+      } else {
+        thumbPreview.innerHTML = '<span class="text-secondary">No thumbnail</span>';
+      }
+      document.getElementById('editGatewayThumb').value = '';
+      modal.show();
+    }
   </script>
 </body>
 </html> 

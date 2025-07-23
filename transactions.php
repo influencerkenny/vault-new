@@ -57,7 +57,7 @@ $sidebarLinks = [
   ['href' => 'withdrawals.php', 'label' => 'Withdrawals', 'icon' => 'bi-upload'],
   ['href' => 'transactions.php', 'label' => 'Transactions', 'icon' => 'bi-list'],
   ['href' => 'referral.php', 'label' => 'Referral', 'icon' => 'bi-people'],
-  ['href' => 'settings.php', 'label' => 'Settings', 'icon' => 'bi-gear'],
+  ['href' => 'account-settings.php', 'label' => 'Settings', 'icon' => 'bi-gear'],
   ['href' => 'profile.php', 'label' => 'Profile', 'icon' => 'bi-person'],
   ['href' => 'support.php', 'label' => 'Support', 'icon' => 'bi-question-circle'],
 ];
@@ -148,6 +148,29 @@ function usdt_placeholder($amount) {
     }
     .sol-value { font-size: 0.95em; color: #38bdf8; font-weight: 600; }
     .usdt-convert { display: block; font-size: 0.6em; color: #94a3b8; margin-top: 0.1em; transition: color 0.3s ease; }
+    /* Mobile transaction history cards */
+    @media (max-width: 600px) {
+      .card.mb-3 {
+        background: #181f2a;
+        border-radius: 1rem;
+        box-shadow: 0 2px 8px #0002;
+        margin-bottom: 1.1rem;
+        color: #fff;
+      }
+      .card-body.p-3 {
+        padding: 1.1rem 1rem 1rem 1rem;
+        color: #fff;
+      }
+      .card.mb-3 .fw-bold,
+      .card.mb-3 .fw-semibold,
+      .card.mb-3 .text-info,
+      .card.mb-3 .mb-1 {
+        color: #fff !important;
+      }
+      .card.mb-3 .text-secondary {
+        color: #cbd5e1 !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -193,81 +216,148 @@ function usdt_placeholder($amount) {
           </div>
         </form>
         <div class="table-responsive mb-5" style="border-radius: 1rem; overflow: hidden; background: #111827cc;">
-          <table class="table table-dark table-striped table-hover align-middle">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Type</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Description</th>
-              </tr>
-            </thead>
-            <tbody>
+          <!-- Desktop Table -->
+          <div class="table-responsive d-none d-sm-block" style="border-radius: 1rem; overflow: hidden; background: #111827cc;">
+            <table class="table table-dark table-striped table-hover align-middle">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($transactions as $tx): ?>
+                <tr>
+                  <td><?=date('M d, Y H:i', strtotime($tx['created_at']))?></td>
+                  <td>
+                    <?php
+                      if ($tx['type'] === 'investment') {
+                        echo 'Stake';
+                        if (!empty($tx['plan_name'])) echo ' - ' . htmlspecialchars($tx['plan_name']);
+                      } elseif ($tx['type'] === 'reward') {
+                        echo 'Reward';
+                      } else {
+                        echo ucfirst($tx['type']);
+                      }
+                    ?>
+                  </td>
+                  <td><?=sol_display($tx['amount'])?><?=usdt_placeholder($tx['amount'])?></td>
+                  <td>
+                    <?php if ($tx['status'] === 'completed'): ?>
+                      <span class="badge bg-success text-uppercase">Completed</span>
+                    <?php elseif ($tx['status'] === 'pending'): ?>
+                      <span class="badge bg-warning text-uppercase">Pending</span>
+                    <?php else: ?>
+                      <span class="badge bg-secondary text-uppercase"><?=ucfirst($tx['status'])?></span>
+                    <?php endif; ?>
+                  </td>
+                  <td>
+                    <?php
+                      if ($tx['type'] === 'investment') {
+                        echo 'Staked in plan';
+                        if (!empty($tx['plan_name'])) echo ' ' . htmlspecialchars($tx['plan_name']);
+                      } elseif ($tx['type'] === 'reward') {
+                        echo !empty($tx['reward_description']) ? htmlspecialchars($tx['reward_description']) : 'Reward payout';
+                      } else {
+                        echo htmlspecialchars($tx['description']);
+                      }
+                    ?>
+                  </td>
+                </tr>
+                <?php endforeach; ?>
+                <?php foreach ($orphan_stakes as $stake): ?>
+                <tr>
+                  <td><?=date('M d, Y H:i', strtotime($stake['started_at']))?></td>
+                  <td>Stake<?=!empty($stake['plan_name']) ? ' - ' . htmlspecialchars($stake['plan_name']) : ''?></td>
+                  <td><?=sol_display($stake['amount'])?><?=usdt_placeholder($stake['amount'])?></td>
+                  <td>
+                    <?php if ($stake['status'] === 'completed'): ?>
+                      <span class="badge bg-success text-uppercase">Completed</span>
+                    <?php elseif ($stake['status'] === 'active'): ?>
+                      <span class="badge bg-warning text-uppercase">Pending</span>
+                    <?php else: ?>
+                      <span class="badge bg-secondary text-uppercase"><?=ucfirst($stake['status'])?></span>
+                    <?php endif; ?>
+                  </td>
+                  <td>
+                    Staked in plan <?=!empty($stake['plan_name']) ? htmlspecialchars($stake['plan_name']) : ''?>
+                  </td>
+                </tr>
+                <?php endforeach; ?>
+                <?php if (!count($transactions) && !count($orphan_stakes)): ?><tr><td colspan="5" class="text-center text-muted">No transactions found.</td></tr><?php endif; ?>
+              </tbody>
+            </table>
+          </div>
+          <!-- Mobile Cards -->
+          <div class="d-block d-sm-none">
+            <?php if (count($transactions) || count($orphan_stakes)): ?>
               <?php foreach ($transactions as $tx): ?>
-              <tr>
-                <td><?=date('M d, Y H:i', strtotime($tx['created_at']))?></td>
-                <td>
-                  <?php
-                    if ($tx['type'] === 'investment') {
-                      echo 'Stake';
-                      if (!empty($tx['plan_name'])) echo ' - ' . htmlspecialchars($tx['plan_name']);
-                    } elseif ($tx['type'] === 'reward') {
-                      echo 'Reward';
-                    } else {
-                      echo ucfirst($tx['type']);
-                    }
-                  ?>
-                </td>
-                <td><?=sol_display($tx['amount'])?><?=usdt_placeholder($tx['amount'])?></td>
-                <td>
-                  <?php if ($tx['status'] === 'completed'): ?>
-                    <span class="badge bg-success text-uppercase">Completed</span>
-                  <?php elseif ($tx['status'] === 'pending'): ?>
-                    <span class="badge bg-warning text-uppercase">Pending</span>
-                  <?php else: ?>
-                    <span class="badge bg-secondary text-uppercase"><?=ucfirst($tx['status'])?></span>
-                  <?php endif; ?>
-                </td>
-                <td>
-                  <?php
-                    if ($tx['type'] === 'investment') {
-                      echo 'Staked in plan';
-                      if (!empty($tx['plan_name'])) echo ' ' . htmlspecialchars($tx['plan_name']);
-                      // Remove interest display
-                      // if (!empty($tx['interest_earned'])) echo ' | Interest: ' . sol_display($tx['interest_earned']);
-                    } elseif ($tx['type'] === 'reward') {
-                      echo !empty($tx['reward_description']) ? htmlspecialchars($tx['reward_description']) : 'Reward payout';
-                    } else {
-                      echo htmlspecialchars($tx['description']);
-                    }
-                  ?>
-                </td>
-              </tr>
+                <div class="card mb-3" style="background:#181f2a;border-radius:1rem;box-shadow:0 2px 8px #0002; color:#fff;">
+                  <div class="card-body p-3" style="color:#fff;">
+                    <div class="mb-1"><span class="fw-bold">Date:</span> <span style="color:#fff;"><?=date('M d, Y H:i', strtotime($tx['created_at']))?></span></div>
+                    <div class="mb-1"><span class="fw-bold">Type:</span> <span style="color:#fff;">
+                      <?php
+                        if ($tx['type'] === 'investment') {
+                          echo 'Stake';
+                          if (!empty($tx['plan_name'])) echo ' - ' . htmlspecialchars($tx['plan_name']);
+                        } elseif ($tx['type'] === 'reward') {
+                          echo 'Reward';
+                        } else {
+                          echo ucfirst($tx['type']);
+                        }
+                      ?>
+                    </span></div>
+                    <div class="mb-1"><span class="fw-bold">Amount:</span> <span class="fw-semibold" style="font-size:1.1em; color:#fff;"><?=sol_display($tx['amount'])?><?=usdt_placeholder($tx['amount'])?></span></div>
+                    <div class="mb-1"><span class="fw-bold">Status:</span> 
+                      <?php if ($tx['status'] === 'completed'): ?>
+                        <span class="badge bg-success text-uppercase">Completed</span>
+                      <?php elseif ($tx['status'] === 'pending'): ?>
+                        <span class="badge bg-warning text-uppercase">Pending</span>
+                      <?php else: ?>
+                        <span class="badge bg-secondary text-uppercase"><?=ucfirst($tx['status'])?></span>
+                      <?php endif; ?>
+                    </div>
+                    <div class="mb-1"><span class="fw-bold">Description:</span> <span style="color:#fff;">
+                      <?php
+                        if ($tx['type'] === 'investment') {
+                          echo 'Staked in plan';
+                          if (!empty($tx['plan_name'])) echo ' ' . htmlspecialchars($tx['plan_name']);
+                        } elseif ($tx['type'] === 'reward') {
+                          echo !empty($tx['reward_description']) ? htmlspecialchars($tx['reward_description']) : 'Reward payout';
+                        } else {
+                          echo htmlspecialchars($tx['description']);
+                        }
+                      ?>
+                    </span></div>
+                  </div>
+                </div>
               <?php endforeach; ?>
               <?php foreach ($orphan_stakes as $stake): ?>
-              <tr>
-                <td><?=date('M d, Y H:i', strtotime($stake['started_at']))?></td>
-                <td>Stake<?=!empty($stake['plan_name']) ? ' - ' . htmlspecialchars($stake['plan_name']) : ''?></td>
-                <td><?=sol_display($stake['amount'])?><?=usdt_placeholder($stake['amount'])?></td>
-                <td>
-                  <?php if ($stake['status'] === 'completed'): ?>
-                    <span class="badge bg-success text-uppercase">Completed</span>
-                  <?php elseif ($stake['status'] === 'active'): ?>
-                    <span class="badge bg-warning text-uppercase">Pending</span>
-                  <?php else: ?>
-                    <span class="badge bg-secondary text-uppercase"><?=ucfirst($stake['status'])?></span>
-                  <?php endif; ?>
-                </td>
-                <td>
-                  Staked in plan <?=!empty($stake['plan_name']) ? htmlspecialchars($stake['plan_name']) : ''?>
-                  <!-- Interest display removed -->
-                </td>
-              </tr>
+                <div class="card mb-3" style="background:#181f2a;border-radius:1rem;box-shadow:0 2px 8px #0002; color:#fff;">
+                  <div class="card-body p-3" style="color:#fff;">
+                    <div class="mb-1"><span class="fw-bold">Date:</span> <span style="color:#fff;"><?=date('M d, Y H:i', strtotime($stake['started_at']))?></span></div>
+                    <div class="mb-1"><span class="fw-bold">Type:</span> <span style="color:#fff;">Stake<?=!empty($stake['plan_name']) ? ' - ' . htmlspecialchars($stake['plan_name']) : ''?></span></div>
+                    <div class="mb-1"><span class="fw-bold">Amount:</span> <span class="fw-semibold" style="font-size:1.1em; color:#fff;"><?=sol_display($stake['amount'])?><?=usdt_placeholder($stake['amount'])?></span></div>
+                    <div class="mb-1"><span class="fw-bold">Status:</span> 
+                      <?php if ($stake['status'] === 'completed'): ?>
+                        <span class="badge bg-success text-uppercase">Completed</span>
+                      <?php elseif ($stake['status'] === 'active'): ?>
+                        <span class="badge bg-warning text-uppercase">Pending</span>
+                      <?php else: ?>
+                        <span class="badge bg-secondary text-uppercase"><?=ucfirst($stake['status'])?></span>
+                      <?php endif; ?>
+                    </div>
+                    <div class="mb-1"><span class="fw-bold">Description:</span> <span style="color:#fff;">Staked in plan <?=!empty($stake['plan_name']) ? htmlspecialchars($stake['plan_name']) : ''?></span></div>
+                  </div>
+                </div>
               <?php endforeach; ?>
-              <?php if (!count($transactions) && !count($orphan_stakes)): ?><tr><td colspan="5" class="text-center text-muted">No transactions found.</td></tr><?php endif; ?>
-            </tbody>
-          </table>
+            <?php else: ?>
+              <div class="text-center text-muted">No transactions found.</div>
+            <?php endif; ?>
+          </div>
         </div>
       </div>
     </main>

@@ -1,5 +1,6 @@
 {
-  "name": "my-v0-project",
+  "name": "Vault",
+  "homepage": "https://atlanticunionequity.com/vault",
   "version": "0.1.0",
   "private": true,
   "scripts": {

@@ -129,6 +129,29 @@ function usdt_placeholder($amount) {
     .sol-value { font-size: 0.95em; color: #38bdf8; font-weight: 600; }
     .usdt-convert { display: block; font-size: 0.6em; color: #94a3b8; margin-top: 0.1em; transition: color 0.3s ease; }
     #withdrawForm .form-label { color: #fff !important; }
+    /* Mobile withdrawal history cards */
+    @media (max-width: 600px) {
+      .card.mb-3 {
+        background: #181f2a;
+        border-radius: 1rem;
+        box-shadow: 0 2px 8px #0002;
+        margin-bottom: 1.1rem;
+        color: #fff;
+      }
+      .card-body.p-3 {
+        padding: 1.1rem 1rem 1rem 1rem;
+        color: #fff;
+      }
+      .card.mb-3 .fw-bold,
+      .card.mb-3 .fw-semibold,
+      .card.mb-3 .text-info,
+      .card.mb-3 .mb-1 {
+        color: #fff !important;
+      }
+      .card.mb-3 .text-secondary {
+        color: #cbd5e1 !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -217,36 +240,67 @@ function usdt_placeholder($amount) {
           </div>
         </div>
         <h4 class="mt-5 mb-3 text-info fw-bold">Withdrawal History</h4>
-        <div class="table-responsive mb-5" style="border-radius: 1rem; overflow: hidden; background: #111827cc;">
-          <table class="table table-dark table-striped table-hover align-middle">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Description</th>
-              </tr>
-            </thead>
-            <tbody>
+        <div class="mb-5">
+          <!-- Desktop Table -->
+          <div class="table-responsive d-none d-sm-block" style="border-radius: 1rem; overflow: hidden; background: #111827cc;">
+            <table class="table table-dark table-striped table-hover align-middle">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($withdrawals as $w): ?>
+                <tr>
+                  <td><?=date('M d, Y H:i', strtotime($w['created_at']))?></td>
+                  <td><?=sol_display($w['amount'])?><?=usdt_placeholder($w['amount'])?></td>
+                  <td>
+                    <?php if ($w['status'] === 'pending'): ?>
+                      <span class="badge bg-warning text-dark">Pending</span>
+                    <?php elseif ($w['status'] === 'completed'): ?>
+                      <span class="badge bg-success">Successful</span>
+                    <?php else: ?>
+                      <span class="badge bg-danger">Failed</span>
+                    <?php endif; ?>
+                  </td>
+                  <td><?=htmlspecialchars($w['description'])?></td>
+                </tr>
+                <?php endforeach; ?>
+                <?php if (!count($withdrawals)): ?><tr><td colspan="4" class="text-center text-muted">No withdrawals yet.</td></tr><?php endif; ?>
+              </tbody>
+            </table>
+          </div>
+          <!-- Mobile Cards -->
+          <div class="d-block d-sm-none">
+            <?php if (count($withdrawals)): ?>
               <?php foreach ($withdrawals as $w): ?>
-              <tr>
-                <td><?=date('M d, Y H:i', strtotime($w['created_at']))?></td>
-                <td><?=sol_display($w['amount'])?><?=usdt_placeholder($w['amount'])?></td>
-                <td>
-                  <?php if ($w['status'] === 'pending'): ?>
-                    <span class="badge bg-warning text-dark">Pending</span>
-                  <?php elseif ($w['status'] === 'completed'): ?>
-                    <span class="badge bg-success">Successful</span>
-                  <?php else: ?>
-                    <span class="badge bg-danger">Failed</span>
-                  <?php endif; ?>
-                </td>
-                <td><?=htmlspecialchars($w['description'])?></td>
-              </tr>
+                <div class="card mb-3" style="background:#181f2a;border-radius:1rem;box-shadow:0 2px 8px #0002; color:#fff;">
+                  <div class="card-body p-3" style="color:#fff;">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <span class="fw-bold text-info" style="font-size:1.05em;">Amount:</span>
+                      <span class="fw-semibold" style="font-size:1.1em; color:#fff;"><?=sol_display($w['amount'])?><?=usdt_placeholder($w['amount'])?></span>
+                    </div>
+                    <div class="mb-1"><span class="fw-bold">Date:</span> <span style="color:#fff;"><?=date('M d, Y H:i', strtotime($w['created_at']))?></span></div>
+                    <div class="mb-1"><span class="fw-bold">Status:</span> 
+                      <?php if ($w['status'] === 'pending'): ?>
+                        <span class="badge bg-warning text-dark">Pending</span>
+                      <?php elseif ($w['status'] === 'completed'): ?>
+                        <span class="badge bg-success">Successful</span>
+                      <?php else: ?>
+                        <span class="badge bg-danger">Failed</span>
+                      <?php endif; ?>
+                    </div>
+                    <div class="mb-1"><span class="fw-bold">Description:</span> <span style="color:#fff;"><?=htmlspecialchars($w['description'])?></span></div>
+                  </div>
+                </div>
               <?php endforeach; ?>
-              <?php if (!count($withdrawals)): ?><tr><td colspan="4" class="text-center text-muted">No withdrawals yet.</td></tr><?php endif; ?>
-            </tbody>
-          </table>
+            <?php else: ?>
+              <div class="text-center text-muted">No withdrawals yet.</div>
+            <?php endif; ?>
+          </div>
         </div>
       </div>
     </main>

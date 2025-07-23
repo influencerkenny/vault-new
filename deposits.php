@@ -7,8 +7,11 @@ if (!isset($_SESSION['user_id'])) {
 require_once 'api/settings_helper.php';
 $pdo = new PDO('mysql:host=localhost;dbname=vault_db', 'root', '');
 $user_id = $_SESSION['user_id'];
-$success = $error = '';
 
+$success = $error = '';
+if (isset($_GET['success']) && $_GET['success'] == '1') {
+  $success = 'Deposit request submitted! Awaiting admin approval.';
+}
 // Fetch enabled gateways
 $gateways = $pdo->query('SELECT * FROM payment_gateways WHERE status="enabled" ORDER BY created_at DESC')->fetchAll(PDO::FETCH_ASSOC);
 // If no gateways exist, create a default one
@@ -82,7 +85,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['gateway_id'], $_POST[
             'Deposit Submitted',
             'Your deposit request of ' . $amount . ' ' . $gateway['currency'] . ' is pending admin approval.'
           ]);
-          $success = 'Deposit request submitted! Awaiting admin approval.';
+          header('Location: deposits.php?success=1');
+          exit;
         } else {
           $error = 'Failed to submit deposit.';
         }
@@ -171,6 +175,34 @@ function usdt_placeholder($amount) {
     #depositForm .form-label {
       color: #fff !important;
     }
+    /* Make payment description (gateway instructions) white */
+    #gatewayDetails {
+      color: #fff !important;
+    }
+    /* Mobile deposit history cards */
+    @media (max-width: 600px) {
+      .card.mb-3 {
+        background: #181f2a;
+        border-radius: 1rem;
+        box-shadow: 0 2px 8px #0002;
+        margin-bottom: 1.1rem;
+        color: #fff;
+      }
+      .card-body.p-3 {
+        padding: 1.1rem 1rem 1rem 1rem;
+        color: #fff;
+      }
+      .card.mb-3 .fw-bold,
+      .card.mb-3 .fw-semibold,
+      .card.mb-3 .text-info,
+      .card.mb-3 .mb-1,
+      .card.mb-3 a.proof-link {
+        color: #fff !important;
+      }
+      .card.mb-3 .text-secondary {
+        color: #cbd5e1 !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -213,85 +245,88 @@ function usdt_placeholder($amount) {
           <div class="alert alert-warning text-center">No payment methods are currently available. Please contact support.</div>
         <?php endif; ?>
         <div class="mb-4">
-          <button class="btn btn-primary mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#depositFormCollapse" aria-expanded="false" aria-controls="depositFormCollapse">
+          <button class="btn btn-primary mb-2" type="button" data-bs-toggle="modal" data-bs-target="#depositModal">
             <i class="bi bi-plus-circle me-1"></i> New Deposit
           </button>
-          <div class="collapse" id="depositFormCollapse">
-            <div class="card shadow-lg border-0" style="background:#181f2a;border-radius:1.25rem;max-width:700px;margin:0 auto 2.5rem auto;box-shadow:0 4px 32px #0003;">
-              <div class="card-body p-4">
-        <form id="depositForm" method="post" enctype="multipart/form-data" autocomplete="off"<?=empty($gateways)?' style="pointer-events:none;opacity:0.6;"':''?> >
-          <div class="row g-3 mb-4">
-            <div class="col-md-4">
-            <label for="gateway_id" class="form-label">Select Payment Method</label>
-            <select class="form-select mb-3" id="gateway_id" name="gateway_id" required>
-              <option value="">Choose a gateway</option>
-              <?php foreach ($gateways as $gw): ?>
-                <option value="<?=$gw['id']?>" data-currency="<?=$gw['currency']?>" data-rate="<?=$gw['rate_to_usd']?>" data-min="<?=$gw['min_amount']?>" data-max="<?=$gw['max_amount']?>" data-instructions="<?=htmlspecialchars($gw['instructions'])?>" data-userlabel="<?=htmlspecialchars($gw['user_data_label'])?>" data-thumb="<?=$gw['thumbnail']?>">
-                  <?=$gw['name']?> (<?=$gw['currency']?>)
-                </option>
-              <?php endforeach; ?>
-            </select>
-            <div id="gatewayDetails" class="form-text mb-3"></div>
-          </div>
-            <div class="col-md-4">
-            <label for="amount" class="form-label">Amount</label>
-            <input type="number" class="form-control mb-2" id="amount" name="amount" min="0" step="0.01" required>
-            <div id="amountRange" class="form-text mb-2"></div>
-          </div>
-            <div class="col-md-4">
-              <label for="proof" class="form-label">Upload Proof of Payment</label>
-              <input type="file" class="form-control" id="proof" name="proof" accept="image/*,application/pdf" required>
-            </div>
-          </div>
-          <div class="row g-3 mb-4">
-            <div class="col-12">
-              <button type="submit" class="btn btn-info w-100">Submit Deposit</button>
-            </div>
-          </div>
-        </form>
-              </div>
-            </div>
-          </div>
+          <!-- Deposit Modal will be moved to just before </body> -->
         </div>
         <h4 class="mt-5 mb-3 text-info fw-bold">Deposit History</h4>
-        <div class="table-responsive mb-5" style="border-radius: 1rem; overflow: hidden; background: #111827cc;">
-          <table class="table table-dark table-striped table-hover align-middle">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Amount</th>
-                <th>Method</th>
-                <th>Status</th>
-                <th>Proof</th>
-              </tr>
-            </thead>
-            <tbody>
+        <div class="mb-5">
+          <!-- Desktop Table -->
+          <div class="table-responsive d-none d-sm-block" style="border-radius: 1rem; overflow: hidden; background: #111827cc;">
+            <table class="table table-dark table-striped table-hover align-middle">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Amount</th>
+                  <th>Method</th>
+                  <th>Status</th>
+                  <th>Proof</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($deposits as $dep): ?>
+                <tr>
+                  <td><?=date('M d, Y H:i', strtotime($dep['created_at']))?></td>
+                  <td><?=number_format($dep['amount'],2)?></td>
+                  <td><?=!empty($dep['description']) ? htmlspecialchars($dep['description']) : 'Deposit'?></td>
+                  <td>
+                    <?php if ($dep['status'] === 'pending'): ?>
+                      <span class="badge bg-warning text-dark">Pending</span>
+                    <?php elseif ($dep['status'] === 'completed'): ?>
+                      <span class="badge bg-success">Successful</span>
+                    <?php else: ?>
+                      <span class="badge bg-danger">Rejected</span>
+                    <?php endif; ?>
+                  </td>
+                  <td>
+                    <?php if (!empty($dep['proof'])): ?>
+                      <a href="public/<?=htmlspecialchars($dep['proof'])?>" target="_blank" class="proof-link">View</a>
+                    <?php else: ?>
+                      <span class="text-secondary">-</span>
+                    <?php endif; ?>
+                  </td>
+                </tr>
+                <?php endforeach; ?>
+                <?php if (!count($deposits)): ?><tr><td colspan="5" class="text-center text-muted">No deposit history yet.</td></tr><?php endif; ?>
+              </tbody>
+            </table>
+          </div>
+          <!-- Mobile Cards -->
+          <div class="d-block d-sm-none">
+            <?php if (count($deposits)): ?>
               <?php foreach ($deposits as $dep): ?>
-              <tr>
-                <td><?=date('M d, Y H:i', strtotime($dep['created_at']))?></td>
-                <td><?=number_format($dep['amount'],2)?></td>
-                <td><?=htmlspecialchars($dep['description'])?></td>
-                <td>
-                  <?php if ($dep['status'] === 'pending'): ?>
-                    <span class="badge bg-warning text-dark">Pending</span>
-                  <?php elseif ($dep['status'] === 'completed'): ?>
-                    <span class="badge bg-success">Successful</span>
-                  <?php else: ?>
-                    <span class="badge bg-danger">Rejected</span>
-                  <?php endif; ?>
-                </td>
-                <td>
-                  <?php if (!empty($dep['proof'])): ?>
-                    <a href="public/<?=htmlspecialchars($dep['proof'])?>" target="_blank" class="proof-link">View</a>
-                  <?php else: ?>
-                    <span class="text-secondary">-</span>
-                  <?php endif; ?>
-                </td>
-              </tr>
+                <div class="card mb-3" style="background:#181f2a;border-radius:1rem;box-shadow:0 2px 8px #0002;">
+                  <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <span class="fw-bold text-info" style="font-size:1.05em;">Amount:</span>
+                      <span class="fw-semibold" style="font-size:1.1em;"><?=number_format($dep['amount'],2)?></span>
+                    </div>
+                    <div class="mb-1"><span class="fw-bold">Date:</span> <?=date('M d, Y H:i', strtotime($dep['created_at']))?></div>
+                    <div class="mb-1"><span class="fw-bold">Method:</span> <?=!empty($dep['description']) ? htmlspecialchars($dep['description']) : 'Deposit'?></div>
+                    <div class="mb-1"><span class="fw-bold">Status:</span> 
+                      <?php if ($dep['status'] === 'pending'): ?>
+                        <span class="badge bg-warning text-dark">Pending</span>
+                      <?php elseif ($dep['status'] === 'completed'): ?>
+                        <span class="badge bg-success">Successful</span>
+                      <?php else: ?>
+                        <span class="badge bg-danger">Rejected</span>
+                      <?php endif; ?>
+                    </div>
+                    <div class="mb-1"><span class="fw-bold">Proof:</span> 
+                      <?php if (!empty($dep['proof'])): ?>
+                        <a href="public/<?=htmlspecialchars($dep['proof'])?>" target="_blank" class="proof-link">View</a>
+                      <?php else: ?>
+                        <span class="text-secondary">-</span>
+                      <?php endif; ?>
+                    </div>
+                  </div>
+                </div>
               <?php endforeach; ?>
-              <?php if (!count($deposits)): ?><tr><td colspan="5" class="text-center text-muted">No deposit history yet.</td></tr><?php endif; ?>
-            </tbody>
-          </table>
+            <?php else: ?>
+              <div class="text-center text-muted">No deposit history yet.</div>
+            <?php endif; ?>
+          </div>
         </div>
       </div>
     </main>
@@ -340,6 +375,79 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!confirm('Are you sure you want to submit this deposit?')) {
         e.preventDefault();
         return false;
+      }
+    });
+  }
+});
+// Show payment gateway instructions when a gateway is selected
+  document.addEventListener('DOMContentLoaded', function() {
+    var gatewaySelect = document.getElementById('gateway_id');
+    var gatewayDetails = document.getElementById('gatewayDetails');
+    if (gatewaySelect && gatewayDetails) {
+      function updateGatewayDetails() {
+        var selected = gatewaySelect.options[gatewaySelect.selectedIndex];
+        var instructions = selected ? selected.getAttribute('data-instructions') : '';
+        gatewayDetails.textContent = instructions || '';
+      }
+      gatewaySelect.addEventListener('change', updateGatewayDetails);
+      // Show instructions for pre-selected value (if any)
+      updateGatewayDetails();
+    }
+  });
+</script>
+<!-- Deposit Modal (moved here for best compatibility) -->
+<div class="modal fade" id="depositModal" tabindex="-1" aria-labelledby="depositModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-md">
+    <div class="modal-content bg-dark text-light" style="border-radius:1.1rem;background:#181f2a;max-width:420px;margin:auto;">
+      <form id="depositForm" method="post" enctype="multipart/form-data" autocomplete="off">
+        <div class="modal-header bg-info text-white" style="border-top-left-radius:1.25rem;border-top-right-radius:1.25rem;">
+          <h5 class="modal-title" id="depositModalLabel">New Deposit</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-2">
+            <label for="gateway_id" class="form-label">Payment Method</label>
+            <select class="form-select mb-2" id="gateway_id" name="gateway_id" required>
+              <option value="">Choose a gateway</option>
+              <?php foreach ($gateways as $gw): ?>
+                <option value="<?=$gw['id']?>" data-currency="<?=$gw['currency']?>" data-rate="<?=$gw['rate_to_usd']?>" data-min="<?=$gw['min_amount']?>" data-max="<?=$gw['max_amount']?>" data-instructions="<?=htmlspecialchars($gw['instructions'])?>" data-userlabel="<?=htmlspecialchars($gw['user_data_label'])?>" data-thumb="<?=$gw['thumbnail']?>">
+                  <?=$gw['name']?> (<?=$gw['currency']?>)
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Payment Description</label>
+            <div id="gatewayDetails" class="p-2 mb-2" style="background:#232b3b;border-radius:0.6rem;color:#fff;min-height:36px;font-size:0.97em;"></div>
+          </div>
+          <div class="mb-2">
+            <label for="amount" class="form-label">Amount</label>
+            <input type="number" class="form-control mb-2" id="amount" name="amount" min="0" step="0.01" required>
+            <div id="amountRange" class="form-text mb-2"></div>
+          </div>
+          <div class="mb-2">
+            <label for="proof" class="form-label">Proof of Payment</label>
+            <input type="file" class="form-control" id="proof" name="proof" accept="image/*,application/pdf" required>
+          </div>
+        </div>
+        <div class="modal-footer" style="border-bottom-left-radius:1.25rem;border-bottom-right-radius:1.25rem;">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-info">Submit Deposit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<script>
+// Fallback: If modal does not open, open it manually
+document.addEventListener('DOMContentLoaded', function() {
+  var btn = document.querySelector('[data-bs-target="#depositModal"]');
+  if (btn) {
+    btn.addEventListener('click', function(e) {
+      var modalEl = document.getElementById('depositModal');
+      if (modalEl && typeof bootstrap !== 'undefined') {
+        var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
       }
     });
   }

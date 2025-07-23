@@ -95,6 +95,26 @@ $total_pending = $pdo->query('SELECT SUM(amount) FROM transactions WHERE type = 
     @media (max-width: 991px) { .main-content { margin-left: 0; } .dashboard-content-wrapper { max-width: 100vw; margin: 0; padding: 0 0.3rem; font-size: 0.89rem; } }
     @media (max-width: 767px) { .dashboard-content-wrapper { padding: 0 0.1rem; font-size: 0.87rem; } }
     @media (max-width: 575px) { .dashboard-content-wrapper { padding: 0 0.05rem; font-size: 0.85rem; } .withdrawals-table { font-size: 0.87em; } .withdrawals-table th, .withdrawals-table td { padding: 0.35rem 0.18rem; font-size: 0.87em; } }
+    /* Mobile withdrawal cards */
+    @media (max-width: 700px) {
+      .card.mb-3 {
+        background: #181f2a;
+        border-radius: 1.1rem;
+        box-shadow: 0 2px 12px #0003;
+        color: #fff;
+      }
+      .card-body.p-3 {
+        color: #fff;
+      }
+      .card.mb-3 .fw-bold,
+      .card.mb-3 .text-info,
+      .card.mb-3 .mb-1 {
+        color: #fff !important;
+      }
+      .card.mb-3 .text-secondary {
+        color: #cbd5e1 !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -130,51 +150,91 @@ $total_pending = $pdo->query('SELECT SUM(amount) FROM transactions WHERE type = 
         <?php if ($success): ?><div class="alert alert-success"><?=$success?></div><?php endif; ?>
         <?php if ($error): ?><div class="alert alert-danger"><?=$error?></div><?php endif; ?>
         <div class="table-responsive">
-          <table class="table withdrawals-table table-striped table-hover align-middle">
-            <thead>
-              <tr>
-                <th>User</th>
-                <th>Email</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Date</th>
-                <th>Description</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              <?php foreach ($withdrawals as $w): ?>
-              <tr>
-                <td><?=htmlspecialchars($w['username'])?></td>
-                <td><?=htmlspecialchars($w['email'])?></td>
-                <td>SOL <?=number_format($w['amount'],2)?></td>
-                <td>
-                  <?php if ($w['status'] === 'pending'): ?>
-                    <span class="badge bg-warning text-dark">Pending</span>
-                  <?php elseif ($w['status'] === 'completed'): ?>
-                    <span class="badge bg-success">Completed</span>
-                  <?php else: ?>
-                    <span class="badge bg-danger">Failed</span>
-                  <?php endif; ?>
-                </td>
-                <td><?=date('Y-m-d H:i', strtotime($w['created_at']))?></td>
-                <td><?=htmlspecialchars($w['description'])?></td>
-                <td>
-                  <?php if ($w['status'] === 'pending'): ?>
-                  <form method="post" style="display:inline-block;">
-                    <input type="hidden" name="withdrawal_id" value="<?=$w['id']?>">
-                    <button type="submit" name="action" value="complete" class="btn btn-success btn-sm action-btn" onclick="return confirm('Mark as completed?')"><i class="bi bi-check-circle"></i></button>
-                    <button type="submit" name="action" value="fail" class="btn btn-danger btn-sm action-btn" onclick="return confirm('Mark as failed?')"><i class="bi bi-x-circle"></i></button>
-                  </form>
-                  <?php else: ?>
-                    <span class="text-secondary">-</span>
-                  <?php endif; ?>
-                </td>
-              </tr>
-              <?php endforeach; ?>
-              <?php if (!count($withdrawals)): ?><tr><td colspan="7" class="text-center text-muted">No withdrawal requests found.</td></tr><?php endif; ?>
-            </tbody>
-          </table>
+          <!-- Desktop Table -->
+          <div class="table-responsive d-none d-md-block mb-5">
+            <table class="table withdrawals-table table-striped table-hover align-middle">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Email</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                  <th>Description</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($withdrawals as $w): ?>
+                <tr>
+                  <td><?=htmlspecialchars($w['username'])?></td>
+                  <td><?=htmlspecialchars($w['email'])?></td>
+                  <td>SOL <?=number_format($w['amount'],2)?></td>
+                  <td>
+                    <?php if ($w['status'] === 'pending'): ?>
+                      <span class="badge bg-warning text-dark">Pending</span>
+                    <?php elseif ($w['status'] === 'completed'): ?>
+                      <span class="badge bg-success">Completed</span>
+                    <?php else: ?>
+                      <span class="badge bg-danger">Failed</span>
+                    <?php endif; ?>
+                  </td>
+                  <td><?=date('Y-m-d H:i', strtotime($w['created_at']))?></td>
+                  <td><?=htmlspecialchars($w['description'])?></td>
+                  <td>
+                    <?php if ($w['status'] === 'pending'): ?>
+                    <form method="post" style="display:inline-block;">
+                      <input type="hidden" name="withdrawal_id" value="<?=$w['id']?>">
+                      <button type="submit" name="action" value="complete" class="btn btn-success btn-sm action-btn" onclick="return confirm('Mark as completed?')"><i class="bi bi-check-circle"></i></button>
+                      <button type="submit" name="action" value="fail" class="btn btn-danger btn-sm action-btn" onclick="return confirm('Mark as failed?')"><i class="bi bi-x-circle"></i></button>
+                    </form>
+                    <?php else: ?>
+                      <span class="text-secondary">-</span>
+                    <?php endif; ?>
+                  </td>
+                </tr>
+                <?php endforeach; ?>
+                <?php if (!count($withdrawals)): ?><tr><td colspan="7" class="text-center text-muted">No withdrawal requests found.</td></tr><?php endif; ?>
+              </tbody>
+            </table>
+          </div>
+          <!-- Mobile Cards -->
+          <div class="d-block d-md-none">
+            <?php foreach ($withdrawals as $w): ?>
+              <div class="card mb-3" style="background:#181f2a;border-radius:1.1rem;box-shadow:0 2px 12px #0003;color:#fff;">
+                <div class="card-body p-3" style="color:#fff;">
+                  <div class="mb-2 d-flex align-items-center justify-content-between">
+                    <span class="fw-bold text-info" style="font-size:1.08em;"> <?=htmlspecialchars($w['username'])?> </span>
+                    <span>
+                      <?php if ($w['status'] === 'pending'): ?>
+                        <span class="badge bg-warning text-dark">Pending</span>
+                      <?php elseif ($w['status'] === 'completed'): ?>
+                        <span class="badge bg-success">Completed</span>
+                      <?php else: ?>
+                        <span class="badge bg-danger">Failed</span>
+                      <?php endif; ?>
+                    </span>
+                  </div>
+                  <div class="mb-1"><span class="fw-bold">Email:</span> <span style="color:#fff;"> <?=htmlspecialchars($w['email'])?> </span></div>
+                  <div class="mb-1"><span class="fw-bold">Amount:</span> <span style="color:#fff;"> SOL <?=number_format($w['amount'],2)?> </span></div>
+                  <div class="mb-1"><span class="fw-bold">Date:</span> <span style="color:#fff;"> <?=date('Y-m-d H:i', strtotime($w['created_at']))?> </span></div>
+                  <div class="mb-1"><span class="fw-bold">Description:</span> <span style="color:#fff;"> <?=htmlspecialchars($w['description'])?> </span></div>
+                  <div class="mb-2">
+                    <?php if ($w['status'] === 'pending'): ?>
+                    <form method="post" style="display:inline-block;">
+                      <input type="hidden" name="withdrawal_id" value="<?=$w['id']?>">
+                      <button type="submit" name="action" value="complete" class="btn btn-success btn-sm action-btn w-100 mb-1" onclick="return confirm('Mark as completed?')"><i class="bi bi-check-circle"></i> Complete</button>
+                      <button type="submit" name="action" value="fail" class="btn btn-danger btn-sm action-btn w-100" onclick="return confirm('Mark as failed?')"><i class="bi bi-x-circle"></i> Fail</button>
+                    </form>
+                    <?php else: ?>
+                      <span class="text-secondary">-</span>
+                    <?php endif; ?>
+                  </div>
+                </div>
+              </div>
+            <?php endforeach; ?>
+            <?php if (!count($withdrawals)): ?><div class="text-center text-muted">No withdrawal requests found.</div><?php endif; ?>
+          </div>
         </div>
       </div>
     </main>

@@ -190,62 +190,104 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
           </form>
         </div>
         <div class="table-responsive">
-          <table class="table transactions-table table-striped table-hover align-middle">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>User</th>
-                <th>Email</th>
-                <th>Type</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Date</th>
-                <th>Description</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              <?php foreach ($transactions as $tx): ?>
-              <tr>
-                <td><?=$tx['id']?></td>
-                <td><?=htmlspecialchars($tx['username'] ?? '')?></td>
-                <td><?=htmlspecialchars($tx['email'])?></td>
-                <td><?=ucfirst($tx['type'])?></td>
-                <td>SOL <?=number_format($tx['amount'],2)?></td>
-                <td>
-                  <?php if ($tx['status'] === 'pending'): ?>
-                    <span class="badge bg-warning text-dark">Pending</span>
-                  <?php elseif ($tx['status'] === 'completed'): ?>
-                    <span class="badge bg-success">Completed</span>
-                  <?php else: ?>
-                    <span class="badge bg-danger">Failed</span>
-                  <?php endif; ?>
-                </td>
-                <td><?=date('Y-m-d H:i', strtotime($tx['created_at']))?></td>
-                <td><?=htmlspecialchars($tx['description'])?></td>
-                <td>
-                  <?php if ($tx['status'] === 'pending'): ?>
-                    <div class="position-relative d-inline-block">
-                      <button class="btn btn-sm btn-outline-info tx-action-popover-btn" type="button" data-tx-id="<?=$tx['id']?>" aria-haspopup="true" aria-expanded="false" aria-controls="txActionPopoverMenu<?=$tx['id']?>">
-                        Actions
-                      </button>
-                      <div class="tx-action-popover-menu" id="txActionPopoverMenu<?=$tx['id']?>" tabindex="-1" role="menu" aria-labelledby="txActionPopoverMenu<?=$tx['id']?>">
-                        <form method="post" style="display:inline-block;">
-                          <input type="hidden" name="tx_id" value="<?=$tx['id']?>">
-                          <button type="submit" name="action" value="approve" class="dropdown-item text-success bg-dark tx-action-item" onclick="return confirm('Approve this transaction?')" role="menuitem"><i class="bi bi-check-circle me-2"></i>Approve</button>
-                          <button type="submit" name="action" value="reject" class="dropdown-item text-danger bg-dark tx-action-item" onclick="return confirm('Reject this transaction?')" role="menuitem"><i class="bi bi-x-circle me-2"></i>Reject</button>
-                        </form>
+          <!-- Desktop Table -->
+          <div class="table-responsive d-none d-md-block mb-5">
+            <table class="table transactions-table table-striped table-hover align-middle">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>User</th>
+                  <th>Email</th>
+                  <th>Type</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                  <th>Description</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($transactions as $tx): ?>
+                <tr>
+                  <td><?=$tx['id']?></td>
+                  <td><?=htmlspecialchars($tx['username'] ?? '')?></td>
+                  <td><?=htmlspecialchars($tx['email'])?></td>
+                  <td><?=ucfirst($tx['type'])?></td>
+                  <td>SOL <?=number_format($tx['amount'],2)?></td>
+                  <td>
+                    <?php if ($tx['status'] === 'pending'): ?>
+                      <span class="badge bg-warning text-dark">Pending</span>
+                    <?php elseif ($tx['status'] === 'completed'): ?>
+                      <span class="badge bg-success">Completed</span>
+                    <?php else: ?>
+                      <span class="badge bg-danger">Failed</span>
+                    <?php endif; ?>
+                  </td>
+                  <td><?=date('Y-m-d H:i', strtotime($tx['created_at']))?></td>
+                  <td><?=htmlspecialchars($tx['description'])?></td>
+                  <td>
+                    <?php if ($tx['status'] === 'pending'): ?>
+                      <div class="position-relative d-inline-block">
+                        <button class="btn btn-sm btn-outline-info tx-action-popover-btn" type="button" data-tx-id="<?=$tx['id']?>" aria-haspopup="true" aria-expanded="false" aria-controls="txActionPopoverMenu<?=$tx['id']?>">
+                          Actions
+                        </button>
+                        <div class="tx-action-popover-menu" id="txActionPopoverMenu<?=$tx['id']?>" tabindex="-1" role="menu" aria-labelledby="txActionPopoverMenu<?=$tx['id']?>">
+                          <form method="post" style="display:inline-block;">
+                            <input type="hidden" name="tx_id" value="<?=$tx['id']?>">
+                            <button type="submit" name="action" value="approve" class="dropdown-item text-success bg-dark tx-action-item" onclick="return confirm('Approve this transaction?')" role="menuitem"><i class="bi bi-check-circle me-2"></i>Approve</button>
+                            <button type="submit" name="action" value="reject" class="dropdown-item text-danger bg-dark tx-action-item" onclick="return confirm('Reject this transaction?')" role="menuitem"><i class="bi bi-x-circle me-2"></i>Reject</button>
+                          </form>
+                        </div>
                       </div>
-                    </div>
-                  <?php else: ?>
-                    <span class="text-secondary">-</span>
-                  <?php endif; ?>
-                </td>
-              </tr>
-              <?php endforeach; ?>
-              <?php if (!count($transactions)): ?><tr><td colspan="9" class="text-center text-muted">No transactions found.</td></tr><?php endif; ?>
-            </tbody>
-          </table>
+                    <?php else: ?>
+                      <span class="text-secondary">-</span>
+                    <?php endif; ?>
+                  </td>
+                </tr>
+                <?php endforeach; ?>
+                <?php if (!count($transactions)): ?><tr><td colspan="9" class="text-center text-muted">No transactions found.</td></tr><?php endif; ?>
+              </tbody>
+            </table>
+          </div>
+          <!-- Mobile Cards -->
+          <div class="d-block d-md-none">
+            <?php foreach ($transactions as $tx): ?>
+              <div class="card mb-3" style="background:#181f2a;border-radius:1.1rem;box-shadow:0 2px 12px #0003;color:#fff;">
+                <div class="card-body p-3" style="color:#fff;">
+                  <div class="mb-2 d-flex align-items-center justify-content-between">
+                    <span class="fw-bold text-info" style="font-size:1.08em;"> <?=htmlspecialchars($tx['username'] ?? '')?> </span>
+                    <span>
+                      <?php if ($tx['status'] === 'pending'): ?>
+                        <span class="badge bg-warning text-dark">Pending</span>
+                      <?php elseif ($tx['status'] === 'completed'): ?>
+                        <span class="badge bg-success">Completed</span>
+                      <?php else: ?>
+                        <span class="badge bg-danger">Failed</span>
+                      <?php endif; ?>
+                    </span>
+                  </div>
+                  <div class="mb-1"><span class="fw-bold">Transaction ID:</span> <span style="color:#fff;"> <?=$tx['id']?> </span></div>
+                  <div class="mb-1"><span class="fw-bold">Email:</span> <span style="color:#fff;"> <?=htmlspecialchars($tx['email'])?> </span></div>
+                  <div class="mb-1"><span class="fw-bold">Type:</span> <span style="color:#fff;"> <?=ucfirst($tx['type'])?> </span></div>
+                  <div class="mb-1"><span class="fw-bold">Amount:</span> <span style="color:#fff;"> SOL <?=number_format($tx['amount'],2)?> </span></div>
+                  <div class="mb-1"><span class="fw-bold">Date:</span> <span style="color:#fff;"> <?=date('Y-m-d H:i', strtotime($tx['created_at']))?> </span></div>
+                  <div class="mb-1"><span class="fw-bold">Description:</span> <span style="color:#fff;"> <?=htmlspecialchars($tx['description'])?> </span></div>
+                  <div class="mb-2">
+                    <?php if ($tx['status'] === 'pending'): ?>
+                      <form method="post" style="display:inline-block;">
+                        <input type="hidden" name="tx_id" value="<?=$tx['id']?>">
+                        <button type="submit" name="action" value="approve" class="btn btn-success btn-sm action-btn w-100 mb-1" onclick="return confirm('Approve this transaction?')"><i class="bi bi-check-circle"></i> Approve</button>
+                        <button type="submit" name="action" value="reject" class="btn btn-danger btn-sm action-btn w-100" onclick="return confirm('Reject this transaction?')"><i class="bi bi-x-circle"></i> Reject</button>
+                      </form>
+                    <?php else: ?>
+                      <span class="text-secondary">-</span>
+                    <?php endif; ?>
+                  </div>
+                </div>
+              </div>
+            <?php endforeach; ?>
+            <?php if (!count($transactions)): ?><div class="text-center text-muted">No transactions found.</div><?php endif; ?>
+          </div>
         </div>
         <!-- Pagination -->
         <nav aria-label="Transactions pagination" class="mt-4">

@@ -245,6 +245,26 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
       from { opacity: 0; transform: translateY(10px) scale(0.98); }
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
+    /* Mobile user cards */
+    @media (max-width: 700px) {
+      .card.mb-3 {
+        background: #181f2a;
+        border-radius: 1.1rem;
+        box-shadow: 0 2px 12px #0003;
+        color: #fff;
+      }
+      .card-body.p-3 {
+        color: #fff;
+      }
+      .card.mb-3 .fw-bold,
+      .card.mb-3 .text-info,
+      .card.mb-3 .mb-1 {
+        color: #fff !important;
+      }
+      .card.mb-3 .text-secondary {
+        color: #cbd5e1 !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -271,36 +291,121 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
       <?php if ($action_success): ?><div class="alert alert-success"><?=htmlspecialchars($action_success)?></div><?php endif; ?>
       <?php if ($action_error): ?><div class="alert alert-danger"><?=htmlspecialchars($action_error)?></div><?php endif; ?>
       <div class="table-responsive mb-5">
-        <table class="table table-dark table-striped table-hover align-middle">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Status</th>
-              <th>Registered</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <?php foreach ($users as $user): ?>
-            <tr>
-              <td><?=htmlspecialchars($user['username'])?></td>
-              <td><?=htmlspecialchars($user['email'])?></td>
-              <td>
-                <?php if ($user['status'] === 'active'): ?>
-                  <span class="badge bg-success">Active</span>
-                <?php elseif ($user['status'] === 'blocked'): ?>
-                  <span class="badge bg-danger">Blocked</span>
-                <?php elseif ($user['status'] === 'suspended'): ?>
-                  <span class="badge bg-warning">Suspended</span>
-                <?php else: ?>
-                  <span class="badge bg-secondary"><?=htmlspecialchars(ucfirst($user['status']))?></span>
-                <?php endif; ?>
-              </td>
-              <td><?=date('M d, Y', strtotime($user['created_at']))?></td>
-              <td>
-                <div class="d-grid gap-2">
-                  <button class="btn btn-sm btn-outline-info view-user-btn" type="button" data-bs-toggle="modal" data-bs-target="#userDetailModal"
+        <!-- Desktop Table -->
+        <div class="table-responsive d-none d-md-block mb-5">
+          <table class="table table-dark table-striped table-hover align-middle">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Status</th>
+                <th>Registered</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($users as $user): ?>
+              <tr>
+                <td><?=htmlspecialchars($user['username'])?></td>
+                <td><?=htmlspecialchars($user['email'])?></td>
+                <td>
+                  <?php if ($user['status'] === 'active'): ?>
+                    <span class="badge bg-success">Active</span>
+                  <?php elseif ($user['status'] === 'blocked'): ?>
+                    <span class="badge bg-danger">Blocked</span>
+                  <?php elseif ($user['status'] === 'suspended'): ?>
+                    <span class="badge bg-warning">Suspended</span>
+                  <?php else: ?>
+                    <span class="badge bg-secondary"><?=htmlspecialchars(ucfirst($user['status']))?></span>
+                  <?php endif; ?>
+                </td>
+                <td><?=date('M d, Y', strtotime($user['created_at']))?></td>
+                <td>
+                  <div class="d-grid gap-2">
+                    <button class="btn btn-sm btn-outline-info view-user-btn" type="button" data-bs-toggle="modal" data-bs-target="#userDetailModal"
+                      data-id="<?=$user['id']?>"
+                      data-username="<?=htmlspecialchars($user['username'])?>"
+                      data-email="<?=htmlspecialchars($user['email'])?>"
+                      data-status="<?=htmlspecialchars($user['status'])?>"
+                      data-created="<?=htmlspecialchars($user['created_at'])?>"
+                      data-available-balance="<?=htmlspecialchars($user['available_balance'])?>"
+                      data-withdrawable-balance="<?=htmlspecialchars($user['withdrawable_balance'])?>"
+                      data-total-deposits="<?=htmlspecialchars($user['total_deposits'])?>"
+                      data-total-interest="<?=htmlspecialchars($user['total_interest'])?>"
+                      data-total-withdrawals="<?=htmlspecialchars($user['total_withdrawals'])?>"
+                      data-transaction-count="<?=htmlspecialchars($user['transaction_count'])?>"
+                      title="View User Details" role="menuitem">
+                      <i class="bi bi-eye me-2"></i>View Details
+                    </button>
+                    <?php if ($user['status'] === 'blocked'): ?>
+                    <form method="post" style="display:inline;">
+                      <input type="hidden" name="user_id" value="<?=$user['id']?>">
+                      <input type="hidden" name="action_type" value="unblock">
+                      <button class="dropdown-item text-success bg-dark user-action-item" type="submit" onclick="return confirm('Unblock this user?')" title="Unblock User" role="menuitem">
+                        <i class="bi bi-unlock me-2"></i>Unblock
+                      </button>
+                    </form>
+                    <?php elseif ($user['status'] === 'suspended'): ?>
+                    <form method="post" style="display:inline;">
+                      <input type="hidden" name="user_id" value="<?=$user['id']?>">
+                      <input type="hidden" name="action_type" value="unsuspend">
+                      <button class="dropdown-item text-success bg-dark user-action-item" type="submit" onclick="return confirm('Unsuspend this user?')" title="Unsuspend User" role="menuitem">
+                        <i class="bi bi-play-circle me-2"></i>Unsuspend
+                      </button>
+                    </form>
+                    <?php else: ?>
+                    <form method="post" style="display:inline;">
+                      <input type="hidden" name="user_id" value="<?=$user['id']?>">
+                      <input type="hidden" name="action_type" value="block">
+                      <button class="dropdown-item text-warning bg-dark user-action-item" type="submit" onclick="return confirm('Block this user?')" title="Block User" role="menuitem">
+                        <i class="bi bi-slash-circle me-2"></i>Block
+                      </button>
+                    </form>
+                    <form method="post" style="display:inline;">
+                      <input type="hidden" name="user_id" value="<?=$user['id']?>">
+                      <input type="hidden" name="action_type" value="suspend">
+                      <button class="dropdown-item text-warning bg-dark user-action-item" type="submit" onclick="return confirm('Suspend this user?')" title="Suspend User" role="menuitem">
+                        <i class="bi bi-pause-circle me-2"></i>Suspend
+                      </button>
+                    </form>
+                    <?php endif; ?>
+                    <form method="post" style="display:inline;">
+                      <input type="hidden" name="user_id" value="<?=$user['id']?>">
+                      <input type="hidden" name="action_type" value="delete">
+                      <button class="dropdown-item text-danger bg-dark user-action-item" type="submit" onclick="return confirm('Delete this user? This cannot be undone.')" title="Delete User" role="menuitem">
+                        <i class="bi bi-trash me-2"></i>Delete
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+        <!-- Mobile Cards -->
+        <div class="d-block d-md-none">
+          <?php foreach ($users as $user): ?>
+            <div class="card mb-3" style="background:#181f2a;border-radius:1.1rem;box-shadow:0 2px 12px #0003;color:#fff;">
+              <div class="card-body p-3" style="color:#fff;">
+                <div class="mb-2 d-flex align-items-center justify-content-between">
+                  <span class="fw-bold text-info" style="font-size:1.08em;"> <?=htmlspecialchars($user['username'])?> </span>
+                  <span>
+                    <?php if ($user['status'] === 'active'): ?>
+                      <span class="badge bg-success">Active</span>
+                    <?php elseif ($user['status'] === 'blocked'): ?>
+                      <span class="badge bg-danger">Blocked</span>
+                    <?php elseif ($user['status'] === 'suspended'): ?>
+                      <span class="badge bg-warning">Suspended</span>
+                    <?php else: ?>
+                      <span class="badge bg-secondary"><?=htmlspecialchars(ucfirst($user['status']))?></span>
+                    <?php endif; ?>
+                  </span>
+                </div>
+                <div class="mb-1"><span class="fw-bold">Email:</span> <span style="color:#fff;"> <?=htmlspecialchars($user['email'])?> </span></div>
+                <div class="mb-1"><span class="fw-bold">Registered:</span> <span style="color:#fff;"> <?=date('M d, Y', strtotime($user['created_at']))?> </span></div>
+                <div class="mb-2 d-flex flex-wrap gap-2">
+                  <button class="btn btn-sm btn-outline-info view-user-btn w-100" type="button" data-bs-toggle="modal" data-bs-target="#userDetailModal"
                     data-id="<?=$user['id']?>"
                     data-username="<?=htmlspecialchars($user['username'])?>"
                     data-email="<?=htmlspecialchars($user['email'])?>"
@@ -319,7 +424,7 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                   <form method="post" style="display:inline;">
                     <input type="hidden" name="user_id" value="<?=$user['id']?>">
                     <input type="hidden" name="action_type" value="unblock">
-                    <button class="dropdown-item text-success bg-dark user-action-item" type="submit" onclick="return confirm('Unblock this user?')" title="Unblock User" role="menuitem">
+                    <button class="dropdown-item text-success bg-dark user-action-item w-100" type="submit" onclick="return confirm('Unblock this user?')" title="Unblock User" role="menuitem">
                       <i class="bi bi-unlock me-2"></i>Unblock
                     </button>
                   </form>
@@ -327,7 +432,7 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                   <form method="post" style="display:inline;">
                     <input type="hidden" name="user_id" value="<?=$user['id']?>">
                     <input type="hidden" name="action_type" value="unsuspend">
-                    <button class="dropdown-item text-success bg-dark user-action-item" type="submit" onclick="return confirm('Unsuspend this user?')" title="Unsuspend User" role="menuitem">
+                    <button class="dropdown-item text-success bg-dark user-action-item w-100" type="submit" onclick="return confirm('Unsuspend this user?')" title="Unsuspend User" role="menuitem">
                       <i class="bi bi-play-circle me-2"></i>Unsuspend
                     </button>
                   </form>
@@ -335,14 +440,14 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                   <form method="post" style="display:inline;">
                     <input type="hidden" name="user_id" value="<?=$user['id']?>">
                     <input type="hidden" name="action_type" value="block">
-                    <button class="dropdown-item text-warning bg-dark user-action-item" type="submit" onclick="return confirm('Block this user?')" title="Block User" role="menuitem">
+                    <button class="dropdown-item text-warning bg-dark user-action-item w-100" type="submit" onclick="return confirm('Block this user?')" title="Block User" role="menuitem">
                       <i class="bi bi-slash-circle me-2"></i>Block
                     </button>
                   </form>
                   <form method="post" style="display:inline;">
                     <input type="hidden" name="user_id" value="<?=$user['id']?>">
                     <input type="hidden" name="action_type" value="suspend">
-                    <button class="dropdown-item text-warning bg-dark user-action-item" type="submit" onclick="return confirm('Suspend this user?')" title="Suspend User" role="menuitem">
+                    <button class="dropdown-item text-warning bg-dark user-action-item w-100" type="submit" onclick="return confirm('Suspend this user?')" title="Suspend User" role="menuitem">
                       <i class="bi bi-pause-circle me-2"></i>Suspend
                     </button>
                   </form>
@@ -350,16 +455,15 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                   <form method="post" style="display:inline;">
                     <input type="hidden" name="user_id" value="<?=$user['id']?>">
                     <input type="hidden" name="action_type" value="delete">
-                    <button class="dropdown-item text-danger bg-dark user-action-item" type="submit" onclick="return confirm('Delete this user? This cannot be undone.')" title="Delete User" role="menuitem">
+                    <button class="dropdown-item text-danger bg-dark user-action-item w-100" type="submit" onclick="return confirm('Delete this user? This cannot be undone.')" title="Delete User" role="menuitem">
                       <i class="bi bi-trash me-2"></i>Delete
                     </button>
                   </form>
                 </div>
-              </td>
-            </tr>
-            <?php endforeach; ?>
-          </tbody>
-        </table>
+              </div>
+            </div>
+          <?php endforeach; ?>
+        </div>
       </div>
     </div>
     <?php include 'footer.php'; ?>

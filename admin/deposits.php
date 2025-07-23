@@ -187,6 +187,26 @@ function parse_payment_method($desc) {
       opacity: 1; 
       pointer-events: auto; 
     }
+    /* Mobile deposit cards */
+    @media (max-width: 700px) {
+      .card.mb-3 {
+        background: #181f2a;
+        border-radius: 1.1rem;
+        box-shadow: 0 2px 12px #0003;
+        color: #fff;
+      }
+      .card-body.p-3 {
+        color: #fff;
+      }
+      .card.mb-3 .fw-bold,
+      .card.mb-3 .text-info,
+      .card.mb-3 .mb-1 {
+        color: #fff !important;
+      }
+      .card.mb-3 .text-secondary {
+        color: #cbd5e1 !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -201,74 +221,136 @@ function parse_payment_method($desc) {
       <?php if ($action_success): ?><div class="alert alert-success"><?=htmlspecialchars($action_success)?></div><?php endif; ?>
       <?php if ($action_error): ?><div class="alert alert-danger"><?=htmlspecialchars($action_error)?></div><?php endif; ?>
       <div class="table-responsive mb-5">
-        <table class="table table-dark table-striped table-hover align-middle">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>User</th>
-              <th>Amount</th>
-              <th>Payment Method</th>
-              <th>Proof of Payment</th>
-              <th>Status</th>
-              <th>Date</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            <?php foreach ($deposits as $dep): ?>
-            <tr>
-              <td><?=$dep['id']?></td>
-              <td><?=htmlspecialchars($dep['username'])?> (<?=$dep['user_id']?>)</td>
-              <td><?=number_format($dep['amount'],2)?></td>
-              <td><?=parse_payment_method($dep['description'])?></td>
-              <td>
-                <?php if ($dep['proof']): ?>
-                  <a href="../public/<?=htmlspecialchars($dep['proof'])?>" target="_blank" class="btn btn-sm btn-info">View Proof</a>
-                <?php else: ?>
-                  <span class="text-muted">-</span>
-                <?php endif; ?>
-              </td>
-              <td>
-                <?php if ($dep['status'] === 'pending'): ?>
-                  <span class="badge bg-warning text-dark">Pending</span>
-                <?php elseif ($dep['status'] === 'completed'): ?>
-                  <span class="badge bg-success">Approved</span>
-                <?php else: ?>
-                  <span class="badge bg-danger">Rejected</span>
-                <?php endif; ?>
-              </td>
-              <td><?=date('Y-m-d H:i', strtotime($dep['created_at']))?></td>
-              <td>
-                <?php if ($dep['status'] === 'pending'): ?>
-                <div class="dropdown">
-                  <button class="btn btn-sm btn-info dropdown-toggle" type="button" id="dropdownMenuButtonDep<?=$dep['id']?>" data-bs-toggle="dropdown" aria-expanded="false">
-                    Actions
-                  </button>
-                  <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="dropdownMenuButtonDep<?=$dep['id']?>">
-                    <li>
-                      <form method="post" style="display:inline;">
-                        <input type="hidden" name="id" value="<?=$dep['id']?>">
-                        <input type="hidden" name="action" value="approve">
-                        <button class="dropdown-item text-success" type="submit" onclick="return confirm('Approve this deposit?')"><i class="bi bi-check-circle me-2"></i>Approve</button>
-                      </form>
-                    </li>
-                    <li>
-                      <form method="post" style="display:inline;">
-                        <input type="hidden" name="id" value="<?=$dep['id']?>">
-                        <input type="hidden" name="action" value="reject">
-                        <button class="dropdown-item text-danger" type="submit" onclick="return confirm('Reject this deposit?')"><i class="bi bi-x-circle me-2"></i>Reject</button>
-                      </form>
-                    </li>
-                  </ul>
+        <!-- Desktop Table -->
+        <div class="table-responsive d-none d-md-block mb-5">
+          <table class="table table-dark table-striped table-hover align-middle">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>User</th>
+                <th>Amount</th>
+                <th>Payment Method</th>
+                <th>Proof of Payment</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($deposits as $dep): ?>
+              <tr>
+                <td><?=$dep['id']?></td>
+                <td><?=htmlspecialchars($dep['username'])?> (<?=$dep['user_id']?>)</td>
+                <td><?=number_format($dep['amount'],2)?></td>
+                <td><?=parse_payment_method($dep['description'])?></td>
+                <td>
+                  <?php if ($dep['proof']): ?>
+                    <a href="../public/<?=htmlspecialchars($dep['proof'])?>" target="_blank" class="btn btn-sm btn-info">View Proof</a>
+                  <?php else: ?>
+                    <span class="text-muted">-</span>
+                  <?php endif; ?>
+                </td>
+                <td>
+                  <?php if ($dep['status'] === 'pending'): ?>
+                    <span class="badge bg-warning text-dark">Pending</span>
+                  <?php elseif ($dep['status'] === 'completed'): ?>
+                    <span class="badge bg-success">Approved</span>
+                  <?php else: ?>
+                    <span class="badge bg-danger">Rejected</span>
+                  <?php endif; ?>
+                </td>
+                <td><?=date('Y-m-d H:i', strtotime($dep['created_at']))?></td>
+                <td>
+                  <?php if ($dep['status'] === 'pending'): ?>
+                  <div class="dropdown">
+                    <button class="btn btn-sm btn-info dropdown-toggle" type="button" id="dropdownMenuButtonDep<?=$dep['id']?>" data-bs-toggle="dropdown" aria-expanded="false">
+                      Actions
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="dropdownMenuButtonDep<?=$dep['id']?>">
+                      <li>
+                        <form method="post" style="display:inline;">
+                          <input type="hidden" name="id" value="<?=$dep['id']?>">
+                          <input type="hidden" name="action" value="approve">
+                          <button class="dropdown-item text-success" type="submit" onclick="return confirm('Approve this deposit?')"><i class="bi bi-check-circle me-2"></i>Approve</button>
+                        </form>
+                      </li>
+                      <li>
+                        <form method="post" style="display:inline;">
+                          <input type="hidden" name="id" value="<?=$dep['id']?>">
+                          <input type="hidden" name="action" value="reject">
+                          <button class="dropdown-item text-danger" type="submit" onclick="return confirm('Reject this deposit?')"><i class="bi bi-x-circle me-2"></i>Reject</button>
+                        </form>
+                      </li>
+                    </ul>
+                  </div>
+                  <?php else: ?>
+                    <span class="text-muted">-</span>
+                  <?php endif; ?>
+                </td>
+              </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+        <!-- Mobile Cards -->
+        <div class="d-block d-md-none">
+          <?php foreach ($deposits as $dep): ?>
+            <div class="card mb-3" style="background:#181f2a;border-radius:1.1rem;box-shadow:0 2px 12px #0003;color:#fff;">
+              <div class="card-body p-3" style="color:#fff;">
+                <div class="mb-2 d-flex align-items-center justify-content-between">
+                  <span class="fw-bold text-info" style="font-size:1.08em;"> <?=htmlspecialchars($dep['username'])?> (<?=$dep['user_id']?>) </span>
+                  <span>
+                    <?php if ($dep['status'] === 'pending'): ?>
+                      <span class="badge bg-warning text-dark">Pending</span>
+                    <?php elseif ($dep['status'] === 'completed'): ?>
+                      <span class="badge bg-success">Approved</span>
+                    <?php else: ?>
+                      <span class="badge bg-danger">Rejected</span>
+                    <?php endif; ?>
+                  </span>
                 </div>
-                <?php else: ?>
-                  <span class="text-muted">-</span>
-                <?php endif; ?>
-              </td>
-            </tr>
-            <?php endforeach; ?>
-          </tbody>
-        </table>
+                <div class="mb-1"><span class="fw-bold">Deposit ID:</span> <span style="color:#fff;"> <?=$dep['id']?> </span></div>
+                <div class="mb-1"><span class="fw-bold">Amount:</span> <span style="color:#fff;"> <?=number_format($dep['amount'],2)?> </span></div>
+                <div class="mb-1"><span class="fw-bold">Payment Method:</span> <span style="color:#fff;"> <?=parse_payment_method($dep['description'])?> </span></div>
+                <div class="mb-1"><span class="fw-bold">Proof:</span> 
+                  <?php if ($dep['proof']): ?>
+                    <a href="../public/<?=htmlspecialchars($dep['proof'])?>" target="_blank" class="btn btn-sm btn-info">View Proof</a>
+                  <?php else: ?>
+                    <span class="text-muted">-</span>
+                  <?php endif; ?>
+                </div>
+                <div class="mb-1"><span class="fw-bold">Date:</span> <span style="color:#fff;"> <?=date('Y-m-d H:i', strtotime($dep['created_at']))?> </span></div>
+                <div class="mb-2">
+                  <?php if ($dep['status'] === 'pending'): ?>
+                  <div class="dropdown">
+                    <button class="btn btn-sm btn-info dropdown-toggle w-100" type="button" id="dropdownMenuButtonDep<?=$dep['id']?>m" data-bs-toggle="dropdown" aria-expanded="false">
+                      Actions
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-dark w-100" aria-labelledby="dropdownMenuButtonDep<?=$dep['id']?>m">
+                      <li>
+                        <form method="post" style="display:inline;">
+                          <input type="hidden" name="id" value="<?=$dep['id']?>">
+                          <input type="hidden" name="action" value="approve">
+                          <button class="dropdown-item text-success" type="submit" onclick="return confirm('Approve this deposit?')"><i class="bi bi-check-circle me-2"></i>Approve</button>
+                        </form>
+                      </li>
+                      <li>
+                        <form method="post" style="display:inline;">
+                          <input type="hidden" name="id" value="<?=$dep['id']?>">
+                          <input type="hidden" name="action" value="reject">
+                          <button class="dropdown-item text-danger" type="submit" onclick="return confirm('Reject this deposit?')"><i class="bi bi-x-circle me-2"></i>Reject</button>
+                        </form>
+                      </li>
+                    </ul>
+                  </div>
+                  <?php else: ?>
+                    <span class="text-muted">-</span>
+                  <?php endif; ?>
+                </div>
+              </div>
+            </div>
+          <?php endforeach; ?>
+        </div>
       </div>
     </div>
     <?php include 'footer.php'; ?>

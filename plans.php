@@ -418,16 +418,16 @@ $total_pages = ceil($total_history / $limit);
         <!-- Mobile History List -->
         <div class="history-mobile-list d-md-none mb-5">
           <?php foreach ($plan_history as $inv): ?>
-            <div class="history-card-mobile mb-3">
+            <div class="history-card-mobile mb-3" style="background:#181f2a;border-radius:1.1rem;box-shadow:0 2px 12px #0003;color:#fff;">
               <div class="history-card-header">
-                <span class="history-card-title"><?= htmlspecialchars($inv['plan_name']) ?></span>
+                <span class="history-card-title" style="color:#38bdf8;"> <?= htmlspecialchars($inv['plan_name']) ?> </span>
                 <span class="badge bg-<?=($inv['status']==='active'?'success':($inv['status']==='completed'?'secondary':'danger'))?> text-uppercase ms-2" style="font-size:0.85em;"> <?=$inv['status']?> </span>
               </div>
-              <div class="history-card-row"><b>Amount:</b> SOL <?= number_format($inv['amount'], 2) ?></div>
-              <div class="history-card-row"><b>Start:</b> <?= date('M d, Y', strtotime($inv['started_at'])) ?></div>
-              <div class="history-card-row"><b>End:</b> <?= $inv['ended_at'] ? date('M d, Y', strtotime($inv['ended_at'])) : '-' ?></div>
-              <div class="history-card-row"><b>End Day:</b> <?= $inv['ended_at'] ? date('M d, Y (l)', strtotime($inv['ended_at'])) : '-' ?></div>
-              <div class="history-card-row"><b>Interest Earned:</b> SOL <?= number_format($inv['interest_earned'], 2) ?></div>
+              <div class="history-card-row"><b>Amount:</b> <span style="color:#fff;">SOL <?= number_format($inv['amount'], 2) ?></span></div>
+              <div class="history-card-row"><b>Start:</b> <span style="color:#fff;"><?= date('M d, Y', strtotime($inv['started_at'])) ?></span></div>
+              <div class="history-card-row"><b>End:</b> <span style="color:#fff;"><?= $inv['ended_at'] ? date('M d, Y', strtotime($inv['ended_at'])) : '-' ?></span></div>
+              <div class="history-card-row"><b>End Day:</b> <span style="color:#fff;"><?= $inv['ended_at'] ? date('M d, Y (l)', strtotime($inv['ended_at'])) : '-' ?></span></div>
+              <div class="history-card-row"><b>Interest Earned:</b> <span style="color:#fff;">SOL <?= number_format($inv['interest_earned'], 2) ?></span></div>
             </div>
           <?php endforeach; ?>
           <?php if (!count($plan_history)): ?><div class="text-center text-muted">No staking history yet.</div><?php endif; ?>
