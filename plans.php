@@ -324,7 +324,7 @@ $total_pages = ceil($total_history / $limit);
 <body>
   <div id="sidebar" class="sidebar">
     <div class="logo mb-4">
-      <img src="/vault-logo-new.png" alt="Vault Logo" height="48">
+      <img src="public/vault-logo-new.png" alt="Vault Logo" height="48">
     </div>
     <?php foreach ($sidebarLinks as $link): ?>
       <a href="<?=$link['href']?>" class="nav-link<?=basename($_SERVER['PHP_SELF']) === basename($link['href']) ? ' active' : ''?>">

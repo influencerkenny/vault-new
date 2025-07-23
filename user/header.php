@@ -5,7 +5,7 @@ require_once __DIR__ . '/../api/config.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-$logo = get_setting('logo_path') ?: '/vault-logo-new.png';
+$logo = get_setting('logo_path') ?: 'public/vault-logo-new.png';
 $system_name = get_setting('system_name') ?: 'Vault';
 
 // Ensure $user, $avatar, $notifications are set

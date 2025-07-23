@@ -1,7 +1,7 @@
 <?php
 // admin/sidebar.php
 require_once __DIR__ . '/../api/settings_helper.php';
-$logo = get_setting('logo_path') ?: '/vault-logo-new.png';
+$logo = get_setting('logo_path') ?: 'public/vault-logo-new.png';
 $system_name = get_setting('system_name') ?: 'Vault Admin';
 ?>
 <style>

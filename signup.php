@@ -1,6 +1,8 @@
 <?php
 // signup.php
 session_start();
+require_once __DIR__ . '/api/settings_helper.php';
+$logo = get_setting('logo_path') ?: 'public/vault-logo-new.png';
 
 // Database connection (adjust as needed)
 $pdo = new PDO('mysql:host=localhost;dbname=vault_db', 'root', '');
@@ -85,7 +87,6 @@ if ($success) {
     mail($fields['email'], $subject, $body, $headers);
 }
 ?>
-<?php include 'user/header.php'; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -94,110 +95,230 @@ if ($success) {
   <title>Sign Up | Vault</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
   <style>
-    body { font-family: 'Inter', sans-serif; background: #0f172a; min-height: 100vh; }
-    .card { background: rgba(17, 24, 39, 0.85); border: 1px solid #1e293b; box-shadow: 0 8px 32px 0 rgba(31, 41, 55, 0.37); will-change: transform; }
-    .form-label, .form-control, .form-select, .form-check-label { color: #e5e7eb; }
-    .form-control, .form-select { background: #1e293b; border: 1px solid #374151; }
-    .form-control:focus, .form-select:focus { border-color: #2563eb; box-shadow: 0 0 0 0.2rem rgba(37,99,235,.25); }
-    .btn-primary { background: linear-gradient(90deg, #2563eb 0%, #0ea5e9 100%); border: none; }
-    .btn-primary:hover, .btn-primary:focus { background: linear-gradient(90deg, #1d4ed8 0%, #2563eb 100%); }
-    .logo-img { width: 64px; height: 64px; margin-bottom: 1rem; }
-    .modal-content { border-radius: 1rem; }
-    .country-dropdown { position: relative; }
-    .country-list { position: absolute; z-index: 10; width: 100%; max-height: 180px; overflow-y: auto; background: #1e293b; border: 1px solid #374151; border-radius: 0.5rem; }
-    .country-list li { padding: 0.5rem 1rem; cursor: pointer; color: #e5e7eb; }
-    .country-list li:hover { background: #2563eb; color: #fff; }
-    .input-group-text { background: #1e293b; border: 1px solid #374151; color: #e5e7eb; }
-    .animated-bg {
-      position: fixed;
-      top: 0; left: 0; width: 100vw; height: 100vh;
-      z-index: 0;
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #000;
+      color: #fff;
+      min-height: 100vh;
+      position: relative;
+    }
+    .card-glass {
+      background: rgba(24, 24, 32, 0.85);
+      border: 1px solid rgba(59, 130, 246, 0.18); /* blue-500 border */
+      box-shadow: 0 8px 32px 0 rgba(59, 130, 246, 0.15), 0 1.5px 8px 0 rgba(139, 92, 246, 0.10);
+      backdrop-filter: blur(16px) saturate(180%);
+      -webkit-backdrop-filter: blur(16px) saturate(180%);
+      border-radius: 1.5rem;
+      z-index: 1;
+    }
+    .form-floating .form-control, .form-floating .form-select {
+      background: rgba(30,41,59,0.85);
+      color: #fff;
+      border: 1px solid #334155;
+    }
+    .form-floating label {
+      color: #a1a1aa;
+    }
+    .form-control:focus, .form-select:focus {
+      border-color: #3B82F6; /* blue-500 */
+      box-shadow: 0 0 0 0.2rem rgba(59,130,246,.25), 0 0 0 0.1rem rgba(6,182,212,.15);
+      background: rgba(30,41,59,0.95);
+      color: #fff;
+    }
+    .input-icon {
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #06B6D4; /* cyan-400 */
+      font-size: 1.2rem;
       pointer-events: none;
+    }
+    .form-floating > .form-control, .form-floating > label {
+      padding-left: 2.5rem;
+    }
+    .btn-primary {
+      background: linear-gradient(90deg, #3B82F6 0%, #06B6D4 100%);
+      border: none;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      color: #fff;
+      box-shadow: 0 2px 8px 0 rgba(59,130,246,0.10), 0 1px 4px 0 rgba(139,92,246,0.08);
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+    .btn-primary:hover, .btn-primary:focus {
+      background: linear-gradient(90deg, #8B5CF6 0%, #3B82F6 100%); /* purple-500 to blue-500 */
+      box-shadow: 0 4px 16px 0 rgba(139,92,246,0.15), 0 2px 8px 0 rgba(16,185,129,0.10);
+    }
+    .logo-img {
+      width: 64px; height: 64px; margin-bottom: 1rem;
+      transition: transform 0.2s;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .logo-img:hover {
+      transform: scale(1.08) rotate(-3deg);
+    }
+    .forgot-link {
+      display: block;
+      margin-top: 0.25rem;
+      text-align: right;
+      font-size: 0.97rem;
+    }
+    .forgot-link a {
+      color: #06B6D4;
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    .forgot-link a:hover, .forgot-link a:focus {
+      color: #3B82F6;
+      text-decoration: underline;
+      outline: none;
+    }
+    .invalid-feedback {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: #F87171;
+      font-size: 0.97rem;
+    }
+    .invalid-feedback .bi {
+      font-size: 1.1rem;
+    }
+    .country-list {
+      position: absolute;
+      z-index: 10;
+      width: 100%;
+      max-height: 180px;
+      overflow-y: auto;
+      background: #1e293b;
+      border: 1px solid #374151;
+      border-radius: 0.5rem;
+    }
+    .country-list li {
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      color: #e5e7eb;
+    }
+    .country-list li:hover {
+      background: #3B82F6;
+      color: #fff;
+    }
+    .input-group-text {
+      background: #1e293b;
+      border: 1px solid #374151;
+      color: #e5e7eb;
+    }
+    .toast-container { z-index: 2000; }
+    .custom-toast {
+      background: linear-gradient(90deg, #3B82F6 0%, #06B6D4 100%);
+      color: #fff;
+      border-radius: 1rem;
+      box-shadow: 0 8px 32px 0 rgba(59,130,246,0.13);
+      min-width: 340px;
+      border: none;
+      padding: 0.75rem 1.25rem;
+      position: relative;
       overflow: hidden;
     }
-    .animated-bg svg { width: 100vw; height: 100vh; display: block; }
-    .toast-container { z-index: 2000; }
+    .custom-toast .checkmark {
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 0.5rem;
+      font-size: 1.5rem;
+      color: #10B981; /* emerald-500 */
+      filter: drop-shadow(0 0 4px #10B98188);
+    }
+    .custom-toast .progress {
+      background: rgba(255,255,255,0.12);
+      border-radius: 2px;
+      margin-top: 0.75rem;
+      height: 5px;
+      box-shadow: 0 1px 4px 0 rgba(59,130,246,0.13);
+    }
+    .custom-toast .progress-bar {
+      background: linear-gradient(90deg, #06B6D4 0%, #3B82F6 100%);
+      border-radius: 2px;
+      transition: width 2.5s linear;
+    }
+    .custom-toast .btn-close {
+      filter: invert(1) grayscale(1);
+    }
+    .show-hide-btn {
+      background: none;
+      border: none;
+      color: #06B6D4;
+      font-size: 1.2rem;
+      position: absolute;
+      right: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 2;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+    .show-hide-btn:hover, .show-hide-btn:focus {
+      color: #8B5CF6;
+    }
+    .spinner-border {
+      width: 1.2rem;
+      height: 1.2rem;
+      border-width: 0.18em;
+      margin-left: 0.5rem;
+    }
   </style>
 </head>
 <body class="d-flex align-items-center justify-content-center">
-  <div class="animated-bg">
-    <svg viewBox="0 0 1920 1080" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="bg-grad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#2563eb"/>
-          <stop offset="100%" stop-color="#0ea5e9"/>
-        </linearGradient>
-      </defs>
-      <g>
-        <!-- Main morphing shape -->
-        <path id="morph1" fill="url(#bg-grad)" opacity="0.25">
-          <animate attributeName="d" dur="14s" repeatCount="indefinite"
-            values="M 0 0 Q 960 200 1920 0 Q 1720 540 1920 1080 Q 960 880 0 1080 Q 200 540 0 0 Z;
-                    M 0 0 Q 960 300 1920 0 Q 1820 540 1920 1080 Q 960 980 0 1080 Q 120 540 0 0 Z;
-                    M 0 0 Q 960 200 1920 0 Q 1720 540 1920 1080 Q 960 880 0 1080 Q 200 540 0 0 Z"/>
-        </path>
-        <!-- Second morphing shape -->
-        <path id="morph2" fill="#0ea5e9" opacity="0.18">
-          <animate attributeName="d" dur="18s" repeatCount="indefinite"
-            values="M 1920 0 Q 1600 400 1920 1080 Q 1200 900 0 1080 Q 400 600 0 0 Q 1000 200 1920 0 Z;
-                    M 1920 0 Q 1700 500 1920 1080 Q 1000 1000 0 1080 Q 600 700 0 0 Q 1200 300 1920 0 Z;
-                    M 1920 0 Q 1600 400 1920 1080 Q 1200 900 0 1080 Q 400 600 0 0 Q 1000 200 1920 0 Z"/>
-        </path>
-        <!-- Floating circles -->
-        <circle cx="1600" cy="200" r="220" fill="#2563eb" opacity="0.13">
-          <animate attributeName="r" values="220;260;220" dur="10s" repeatCount="indefinite"/>
-          <animate attributeName="cy" values="200;300;200" dur="10s" repeatCount="indefinite"/>
-        </circle>
-        <circle cx="400" cy="900" r="180" fill="#0ea5e9" opacity="0.10">
-          <animate attributeName="r" values="180;220;180" dur="12s" repeatCount="indefinite"/>
-          <animate attributeName="cy" values="900;800;900" dur="12s" repeatCount="indefinite"/>
-        </circle>
-        <circle cx="960" cy="540" r="320" fill="#2563eb" opacity="0.07">
-          <animate attributeName="r" values="320;370;320" dur="16s" repeatCount="indefinite"/>
-        </circle>
-      </g>
-    </svg>
-  </div>
   <div class="container py-5 position-relative" style="z-index:1;">
     <div class="row justify-content-center">
       <div class="col-12 col-md-8 col-lg-6 col-xl-5">
-        <div class="card p-4 p-md-5 rounded-4">
+        <div class="card card-glass p-4 p-md-5">
           <div class="text-center mb-4">
-            <img src="/vault-logo-new.png" alt="Vault Logo" class="logo-img" loading="lazy">
+            <img src="<?=htmlspecialchars($logo)?>" alt="Vault" class="logo-img" loading="lazy">
             <h1 class="h3 fw-bold mb-2 text-white">Create Account</h1>
-            <p class="text-secondary">Join Vault and start earning today</p>
+            <p class="text-secondary" style="color:#a1a1aa!important;">Join Vault and start earning today</p>
           </div>
           <form method="POST" autocomplete="off" aria-label="Signup form">
-            <div class="mb-3">
-              <label for="username" class="form-label">Username</label>
+            <div class="form-floating mb-3 position-relative">
+              <span class="input-icon"><i class="bi bi-person"></i></span>
               <input id="username" name="username" type="text" value="<?=htmlspecialchars($fields['username'])?>" class="form-control<?=isset($errors['username'])?' is-invalid':''?>" placeholder="Choose a username" required autofocus aria-invalid="<?=isset($errors['username'])?'true':'false'?>" aria-describedby="username-error">
-              <?php if(isset($errors['username'])): ?><div id="username-error" class="invalid-feedback d-block"><?=$errors['username']?></div><?php endif; ?>
+              <label for="username">Username</label>
+              <?php if(isset($errors['username'])): ?><div id="username-error" class="invalid-feedback"><i class="bi bi-exclamation-circle"></i> <?=$errors['username']?></div><?php endif; ?>
             </div>
             <div class="row g-3">
               <div class="col">
-                <label for="first_name" class="form-label">First Name</label>
-                <input id="first_name" name="first_name" type="text" value="<?=htmlspecialchars($fields['first_name'])?>" class="form-control<?=isset($errors['first_name'])?' is-invalid':''?>" placeholder="First name" required aria-invalid="<?=isset($errors['first_name'])?'true':'false'?>" aria-describedby="first_name-error">
-                <?php if(isset($errors['first_name'])): ?><div id="first_name-error" class="invalid-feedback d-block"><?=$errors['first_name']?></div><?php endif; ?>
+                <div class="form-floating mb-3 position-relative">
+                  <span class="input-icon"><i class="bi bi-person"></i></span>
+                  <input id="first_name" name="first_name" type="text" value="<?=htmlspecialchars($fields['first_name'])?>" class="form-control<?=isset($errors['first_name'])?' is-invalid':''?>" placeholder="First name" required aria-invalid="<?=isset($errors['first_name'])?'true':'false'?>" aria-describedby="first_name-error">
+                  <label for="first_name">First Name</label>
+                  <?php if(isset($errors['first_name'])): ?><div id="first_name-error" class="invalid-feedback"><i class="bi bi-exclamation-circle"></i> <?=$errors['first_name']?></div><?php endif; ?>
+                </div>
               </div>
               <div class="col">
-                <label for="last_name" class="form-label">Last Name</label>
-                <input id="last_name" name="last_name" type="text" value="<?=htmlspecialchars($fields['last_name'])?>" class="form-control<?=isset($errors['last_name'])?' is-invalid':''?>" placeholder="Last name" required aria-invalid="<?=isset($errors['last_name'])?'true':'false'?>" aria-describedby="last_name-error">
-                <?php if(isset($errors['last_name'])): ?><div id="last_name-error" class="invalid-feedback d-block"><?=$errors['last_name']?></div><?php endif; ?>
+                <div class="form-floating mb-3 position-relative">
+                  <span class="input-icon"><i class="bi bi-person"></i></span>
+                  <input id="last_name" name="last_name" type="text" value="<?=htmlspecialchars($fields['last_name'])?>" class="form-control<?=isset($errors['last_name'])?' is-invalid':''?>" placeholder="Last name" required aria-invalid="<?=isset($errors['last_name'])?'true':'false'?>" aria-describedby="last_name-error">
+                  <label for="last_name">Last Name</label>
+                  <?php if(isset($errors['last_name'])): ?><div id="last_name-error" class="invalid-feedback"><i class="bi bi-exclamation-circle"></i> <?=$errors['last_name']?></div><?php endif; ?>
+                </div>
               </div>
             </div>
-            <div class="mb-3 mt-3">
-              <label for="email" class="form-label">Email Address</label>
+            <div class="form-floating mb-3 position-relative">
+              <span class="input-icon"><i class="bi bi-envelope"></i></span>
               <input id="email" name="email" type="email" value="<?=htmlspecialchars($fields['email'])?>" class="form-control<?=isset($errors['email'])?' is-invalid':''?>" placeholder="Enter your email" required aria-invalid="<?=isset($errors['email'])?'true':'false'?>" aria-describedby="email-error">
-              <?php if(isset($errors['email'])): ?><div id="email-error" class="invalid-feedback d-block"><?=$errors['email']?></div><?php endif; ?>
+              <label for="email">Email Address</label>
+              <?php if(isset($errors['email'])): ?><div id="email-error" class="invalid-feedback"><i class="bi bi-exclamation-circle"></i> <?=$errors['email']?></div><?php endif; ?>
             </div>
-            <div class="mb-3">
-              <label for="password" class="form-label">Password</label>
-              <div class="input-group">
-                <input id="password" name="password" type="password" value="<?=htmlspecialchars($fields['password'])?>" class="form-control<?=isset($errors['password'])?' is-invalid':''?>" placeholder="Create a password" required aria-invalid="<?=isset($errors['password'])?'true':'false'?>" aria-describedby="password-error">
-                <button type="button" class="btn btn-outline-secondary input-group-text" tabindex="0" aria-label="Toggle password visibility" onclick="togglePassword()"><span id="pw-toggle-icon">👁️</span></button>
-              </div>
-              <?php if(isset($errors['password'])): ?><div id="password-error" class="invalid-feedback d-block"><?=$errors['password']?></div><?php endif; ?>
+            <div class="form-floating mb-3 position-relative">
+              <span class="input-icon"><i class="bi bi-lock"></i></span>
+              <input id="password" name="password" type="password" value="<?=htmlspecialchars($fields['password'])?>" class="form-control<?=isset($errors['password'])?' is-invalid':''?>" placeholder="Create a password" required aria-invalid="<?=isset($errors['password'])?'true':'false'?>" aria-describedby="password-error">
+              <label for="password">Password</label>
+              <button type="button" class="show-hide-btn" tabindex="0" aria-label="Toggle password visibility" onclick="togglePassword()"><i id="pw-toggle-icon" class="bi bi-eye"></i></button>
+              <?php if(isset($errors['password'])): ?><div id="password-error" class="invalid-feedback"><i class="bi bi-exclamation-circle"></i> <?=$errors['password']?></div><?php endif; ?>
               <ul class="text-secondary small mt-2 mb-0 ps-3">
                 <?php foreach ([
                   'At least 8 characters',
@@ -210,29 +331,32 @@ if ($success) {
                 <?php endforeach; ?>
               </ul>
             </div>
-            <div class="mb-3">
-              <label for="phone" class="form-label">Phone</label>
+            <div class="form-floating mb-3 position-relative">
+              <span class="input-icon"><i class="bi bi-telephone"></i></span>
               <input id="phone" name="phone" type="text" value="<?=htmlspecialchars($fields['phone'])?>" class="form-control<?=isset($errors['phone'])?' is-invalid':''?>" placeholder="Phone number" aria-invalid="<?=isset($errors['phone'])?'true':'false'?>" aria-describedby="phone-error">
-              <?php if(isset($errors['phone'])): ?><div id="phone-error" class="invalid-feedback d-block"><?=$errors['phone']?></div><?php endif; ?>
+              <label for="phone">Phone</label>
+              <?php if(isset($errors['phone'])): ?><div id="phone-error" class="invalid-feedback"><i class="bi bi-exclamation-circle"></i> <?=$errors['phone']?></div><?php endif; ?>
             </div>
-            <div class="mb-3 country-dropdown">
-              <label for="country" class="form-label">Country</label>
+            <div class="form-floating mb-3 position-relative country-dropdown">
+              <span class="input-icon"><i class="bi bi-globe"></i></span>
               <input id="country" name="country" type="text" value="<?=htmlspecialchars($fields['country'])?>" class="form-control<?=isset($errors['country'])?' is-invalid':''?>" placeholder="Select country" autocomplete="off" onkeyup="filterCountries()" aria-invalid="<?=isset($errors['country'])?'true':'false'?>" aria-describedby="country-error">
+              <label for="country">Country</label>
               <ul id="country-list" class="country-list" style="display:none;">
                 <?php foreach ($countries as $c): ?>
                   <li onclick="selectCountry('<?=htmlspecialchars($c)?>')"><?=htmlspecialchars($c)?></li>
                 <?php endforeach; ?>
               </ul>
-              <?php if(isset($errors['country'])): ?><div id="country-error" class="invalid-feedback d-block"><?=$errors['country']?></div><?php endif; ?>
+              <?php if(isset($errors['country'])): ?><div id="country-error" class="invalid-feedback"><i class="bi bi-exclamation-circle"></i> <?=$errors['country']?></div><?php endif; ?>
             </div>
-            <div class="mb-3">
-              <label for="referred_by" class="form-label">Referred By (User ID)</label>
+            <div class="form-floating mb-3 position-relative">
+              <span class="input-icon"><i class="bi bi-person-plus"></i></span>
               <input id="referred_by" name="referred_by" type="text" value="<?=htmlspecialchars($fields['referred_by'])?>" class="form-control" placeholder="User ID of referrer (optional)">
+              <label for="referred_by">Referred By (User ID)</label>
             </div>
             <button type="submit" class="btn btn-primary btn-lg w-100 mt-2" <?= $success ? 'disabled' : '' ?>>Sign Up</button>
           </form>
           <div class="mt-4 text-center">
-            <p class="text-secondary">Already have an account? <a href="signin.php" class="text-primary fw-semibold">Sign in</a></p>
+            <p class="text-secondary" style="color:#a1a1aa!important;">Already have an account? <a href="signin.php" style="color:#3B82F6;font-weight:600;">Sign in</a></p>
           </div>
         </div>
       </div>
@@ -241,16 +365,17 @@ if ($success) {
 
   <!-- Bootstrap Toast for Success -->
   <div class="toast-container position-fixed top-0 end-0 p-3">
-    <div id="success-toast" class="toast align-items-center text-bg-primary border-0<?= $success ? ' show' : '' ?>" role="alert" aria-live="assertive" aria-atomic="true" style="min-width:320px;">
-      <div class="d-flex">
-        <div class="toast-body">
+    <div id="success-toast" class="toast custom-toast align-items-center border-0<?= $success ? ' show' : '' ?>" role="alert" aria-live="assertive" aria-atomic="true" style="min-width:320px;">
+      <div class="d-flex align-items-center">
+        <span class="checkmark" aria-hidden="true">&#10003;</span>
+        <div class="toast-body ps-0">
           <strong>Congratulations!</strong> Your account has been created.<br>
           Redirecting to sign in...
           <div class="progress mt-2" style="height: 4px;">
-            <div id="toast-progress" class="progress-bar bg-info" role="progressbar" style="width: 100%; transition: width 3s linear;"></div>
+            <div id="toast-progress" class="progress-bar" role="progressbar" style="width: 100%; transition: width 3s linear;"></div>
           </div>
         </div>
-        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        <button type="button" class="btn-close btn-close-white ms-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
       </div>
     </div>
   </div>
@@ -262,10 +387,12 @@ if ($success) {
       var icon = document.getElementById('pw-toggle-icon');
       if (pw.type === 'password') {
         pw.type = 'text';
-        icon.textContent = '🙈';
+        icon.classList.remove('bi-eye');
+        icon.classList.add('bi-eye-slash');
       } else {
         pw.type = 'password';
-        icon.textContent = '👁️';
+        icon.classList.remove('bi-eye-slash');
+        icon.classList.add('bi-eye');
       }
     }
     function filterCountries() {
